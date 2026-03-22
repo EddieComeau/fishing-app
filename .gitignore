@@ -1,12 +1,35 @@
+# Dependencies
 node_modules/
+
+# Env files
 .env
 .env.local
+
+# Build output
 dist/
 build/
 coverage/
 .next/
 .cache/
+
+# System files
 .DS_Store
+
+# Editor
 .vscode/
 .idea/
+
+# Logs
 *.log
+
+# Your local planning files (hide these from Git)
+CHATGPT_README.md
+CODEX_README.md
+DECISIONS.md
+Descisions.md
+Future_Ideas.md
+INTELLIGENCE_MAP.md
+LinkedIn_Guide.md
+MASTER_GUIDE.md
+Project_Vault.md
+Ultimate_To_Do_List.md
