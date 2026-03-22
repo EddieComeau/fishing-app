@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: fishdex_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fishdex
+      POSTGRES_USER: fishdex
+      POSTGRES_PASSWORD: fishdex
+    ports:
+      - "5432:5432"
+    volumes:
+      - fishdex_pg_data:/var/lib/postgresql/data
+      - ./server/db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
+volumes:
+  fishdex_pg_data:
