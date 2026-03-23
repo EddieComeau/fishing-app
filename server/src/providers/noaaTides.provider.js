@@ -1,6 +1,12 @@
 const fetch = (...args) =>
   import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
+function buildUpstreamError(message, status = 502) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 function isSaltOrBrackish(waterType) {
   const wt = String(waterType || '').toLowerCase();
   return wt === 'saltwater' || wt === 'brackish';
@@ -60,7 +66,7 @@ async function getNoaaTides({ waterType, tideStationId }) {
 
   const res = await fetch(hiloUrl);
   if (!res.ok) {
-    throw new Error(`NOAA tides hilo failed: ${res.status}`);
+    throw buildUpstreamError(`NOAA tide predictions failed with status ${res.status}.`, 502);
   }
 
   const json = await res.json();

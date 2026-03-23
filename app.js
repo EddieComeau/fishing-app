@@ -318,8 +318,24 @@ function parseNumericInput(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function hasValidCoordinateRange(lat, lng) {
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+function getCoordinateValidationMessage(input) {
+  if (!Number.isFinite(input?.lat) || !Number.isFinite(input?.lng)) {
+    return "Enter latitude and longitude before FishDex can estimate local conditions.";
+  }
+
+  if (!hasValidCoordinateRange(input.lat, input.lng)) {
+    return "Latitude must be between -90 and 90, and longitude must be between -180 and 180.";
+  }
+
+  return null;
+}
+
 function hasValidCoordinates(input) {
-  return Number.isFinite(input?.lat) && Number.isFinite(input?.lng);
+  return getCoordinateValidationMessage(input) === null;
 }
 
 function locationBasisLabel(conditions) {
@@ -334,8 +350,8 @@ function locationBasisLabel(conditions) {
   return `Using form coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}${spotName ? ` near ${spotName}` : ""}`;
 }
 
-function renderLocationRequiredState() {
-  showStatus("Enter latitude and longitude before FishDex can estimate local conditions.", "warn");
+function renderLocationRequiredState(message = "Enter latitude and longitude before FishDex can estimate local conditions.") {
+  showStatus(message, "warn");
   snapshotEl.innerHTML = "";
   scoreRegimeEl.textContent = "Location required";
   scorePillEl.textContent = "Score --";
@@ -727,7 +743,13 @@ function parseContext() {
 
 function updateLocationAssistForContext() {
   const input = parseContext();
-  if (!hasValidCoordinates(input)) {
+  const coordinateValidationMessage = getCoordinateValidationMessage(input);
+  if (coordinateValidationMessage) {
+    if (Number.isFinite(input?.lat) || Number.isFinite(input?.lng)) {
+      setLocationAssistNote(coordinateValidationMessage, "warn");
+      return;
+    }
+
     setLocationAssistNote("Use current device location anywhere in the country, or enter a custom spot manually.");
     return;
   }
@@ -764,7 +786,14 @@ async function getLiveConditions(input) {
   });
 
   if (!response.ok) {
-    throw new Error(`Server conditions failed: ${response.status}`);
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Server conditions failed: ${response.status}`);
   }
 
   return response.json();
@@ -953,9 +982,10 @@ function renderScore(scorePayload) {
 
 async function refreshIntelligence() {
   const input = parseContext();
+  const coordinateValidationMessage = getCoordinateValidationMessage(input);
 
-  if (!hasValidCoordinates(input)) {
-    renderLocationRequiredState();
+  if (coordinateValidationMessage) {
+    renderLocationRequiredState(coordinateValidationMessage);
     if (!currentFishingSession) syncSessionStartDefaults();
     return;
   }

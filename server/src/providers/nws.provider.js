@@ -1,6 +1,12 @@
 const fetch = (...args) =>
   import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
+function buildUpstreamError(message, status = 502) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 async function getNwsHourly(lat, lng) {
   const pointsUrl = `https://api.weather.gov/points/${lat},${lng}`;
   const pointsRes = await fetch(pointsUrl, {
@@ -8,14 +14,18 @@ async function getNwsHourly(lat, lng) {
   });
 
   if (!pointsRes.ok) {
-    throw new Error(`NWS points failed: ${pointsRes.status}`);
+    if (pointsRes.status === 404) {
+      throw buildUpstreamError('NOAA weather coverage is unavailable for this location.', 502);
+    }
+
+    throw buildUpstreamError(`NOAA weather point lookup failed with status ${pointsRes.status}.`, 502);
   }
 
   const pointsJson = await pointsRes.json();
   const hourlyUrl = pointsJson?.properties?.forecastHourly;
 
   if (!hourlyUrl) {
-    throw new Error('NWS points response missing forecastHourly');
+    throw buildUpstreamError('NOAA weather response did not include an hourly forecast URL.', 502);
   }
 
   const hourlyRes = await fetch(hourlyUrl, {
@@ -23,7 +33,7 @@ async function getNwsHourly(lat, lng) {
   });
 
   if (!hourlyRes.ok) {
-    throw new Error(`NWS hourly failed: ${hourlyRes.status}`);
+    throw buildUpstreamError(`NOAA hourly weather fetch failed with status ${hourlyRes.status}.`, 502);
   }
 
   const hourlyJson = await hourlyRes.json();
@@ -31,7 +41,7 @@ async function getNwsHourly(lat, lng) {
   const first = periods[0];
 
   if (!first) {
-    throw new Error('NWS hourly periods empty');
+    throw buildUpstreamError('NOAA hourly weather returned no forecast periods.', 502);
   }
 
   // windSpeed is like "10 mph"

@@ -52,3 +52,42 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await page.locator('#end-session-btn').click();
   await expect(page.locator('#session-mode-note')).toContainText('No active fishing session.');
 });
+
+test('blank coordinates stay invalid instead of degrading into 0,0 requests', async ({ page }) => {
+  await page.goto('/');
+
+  await page.locator('input[name="spot"]').fill('Needs Coordinates');
+  await page.locator('select[name="liveMode"]').selectOption('off');
+  await page.locator('input[name="lat"]').fill('');
+  await page.locator('input[name="lng"]').fill('');
+  await page.locator('#context-form button[type="submit"]').click();
+
+  await expect(page.locator('#status-banner')).toContainText(
+    'Enter latitude and longitude before FishDex can estimate local conditions.'
+  );
+  await expect(page.locator('#score-regime')).toContainText('Location required');
+  await expect(page.locator('#bite-window-output')).toContainText(
+    'Enter coordinates to generate a bite window outlook.'
+  );
+  await expect(page.locator('#targets')).toContainText(
+    'No targets generated until a location is entered.'
+  );
+});
+
+test('out-of-range coordinates are rejected before provider calls', async ({ page }) => {
+  await page.goto('/');
+
+  await page.locator('input[name="spot"]').fill('Out Of Range');
+  await page.locator('select[name="liveMode"]').selectOption('off');
+  await page.locator('input[name="lat"]').fill('91');
+  await page.locator('input[name="lng"]').fill('-181');
+  await page.locator('#context-form button[type="submit"]').click();
+
+  await expect(page.locator('#status-banner')).toContainText(
+    'Latitude must be between -90 and 90, and longitude must be between -180 and 180.'
+  );
+  await expect(page.locator('#score-regime')).toContainText('Location required');
+  await expect(page.locator('#targets')).toContainText(
+    'No targets generated until a location is entered.'
+  );
+});
