@@ -193,6 +193,13 @@ function rankCandidates(candidates, normalized) {
     .sort((a, b) => b.score - a.score || a.rigName.localeCompare(b.rigName));
 }
 
+function withBaseRanks(candidates) {
+  return candidates.map((candidate, index) => ({
+    ...candidate,
+    baseRank: index + 1,
+  }));
+}
+
 function applyTieBreakIfEligible(candidates, personalization, targetSpecies) {
   if (!personalization.applied || !personalization.preview?.preferredRig || candidates.length < 2) {
     return { candidates, personalization, tieBreakApplied: false };
@@ -224,6 +231,7 @@ function applyTieBreakIfEligible(candidates, personalization, targetSpecies) {
       code: 'tie_break_applied',
       modifier,
       preview: {
+        ...personalization.preview,
         preferredRig,
         appliedAs: 'tie_break',
       },
@@ -290,7 +298,7 @@ async function recommendRig(input, options = {}) {
   const baseCandidates = normalized.waterType === 'freshwater'
     ? scoreFreshwaterCandidates(normalized.tempF, normalized.windMph)
     : scoreSaltOrBrackishCandidates(normalized.accessMode, normalized.tideStage, normalized.windMph);
-  const rankedCandidates = rankCandidates(baseCandidates, normalized);
+  const rankedCandidates = withBaseRanks(rankCandidates(baseCandidates, normalized));
 
   const rod = buildRod(normalized.accessMode);
   const line = buildLine(normalized.waterType, normalized.accessMode);
@@ -324,6 +332,10 @@ async function recommendRig(input, options = {}) {
       personalizationEvaluated: oneRankAdjustedResult.personalization.evaluated,
       personalizationApplied: oneRankAdjustedResult.personalization.applied,
       personalizationCode: oneRankAdjustedResult.personalization.code,
+      candidateOrder: oneRankAdjustedResult.personalization.code === 'preference_detected_no_rerank' || !oneRankAdjustedResult.personalization.applied
+        ? 'base'
+        : 'personalized',
+      candidateScoreMeaning: 'base_rule_score',
     },
   };
 
@@ -336,9 +348,11 @@ async function recommendRig(input, options = {}) {
     reasons: baseReasons,
     explanation,
     personalizationPreview: oneRankAdjustedResult.personalization.preview || null,
-    candidates: finalCandidates.map((candidate) => ({
+    candidates: finalCandidates.map((candidate, index) => ({
       rigName: candidate.rigName,
       score: candidate.score,
+      baseRank: candidate.baseRank,
+      personalizedRank: index + 1,
     })),
   };
 }

@@ -21,6 +21,8 @@ coverage/
 
 # Logs
 *.log
+server/test-results/
+server/playwright-report/
 
 # Your local planning files (hide these from Git)
 CHATGPT_README.md

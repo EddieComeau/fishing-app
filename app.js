@@ -310,6 +310,14 @@ function fmtIso(value) {
   return date.toLocaleString();
 }
 
+function parseNumericInput(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function hasValidCoordinates(input) {
   return Number.isFinite(input?.lat) && Number.isFinite(input?.lng);
 }
@@ -622,6 +630,45 @@ function renderFishingSession(summary, isLoggedIn) {
   });
 }
 
+function buildActiveSessionFallbackSummary(session) {
+  if (!session) return null;
+
+  return {
+    sessionId: session.id,
+    name: session.name || "Active Session",
+    locationLabel: session.location_label || null,
+    speciesFocus: session.species_focus || null,
+    status: session.status || "active",
+    startedAt: session.started_at || null,
+    endedAt: session.ended_at || null,
+    sessionDuration: session.started_at ? "Active now" : "n/a",
+    catches: null,
+    topSpecies: null,
+    topRig: null,
+    lastCatchAt: null,
+    activityLevelAtStart: session.activity_level_at_start || null,
+    biteWindowStrength: session.bite_window_score_start ?? null,
+    explanation: {
+      baseReasons: [
+        "FishDex kept the active outing visible while the detailed session summary refresh was unavailable.",
+      ],
+      warnings: [
+        "Detailed session summary could not be refreshed just now.",
+      ],
+      modifiers: [],
+      metadata: {
+        sessionStatus: session.status || "active",
+        sessionStartedAt: session.started_at || null,
+        fallback: true,
+      },
+    },
+    insights: [
+      "Active session is still in progress.",
+      "Refresh again to load the latest session rollups.",
+    ],
+  };
+}
+
 function buildSessionDefaultName() {
   const context = parseContext();
   const species = currentIntelligenceSnapshot?.recommendedSpecies || sessionSpeciesFocusInputEl?.value || "Fishing";
@@ -667,12 +714,12 @@ function parseContext() {
     spot: String(form.get("spot")).trim(),
     waterType,
     accessMode: String(form.get("accessMode")),
-    lat: Number(form.get("lat")),
-    lng: Number(form.get("lng")),
+    lat: parseNumericInput(form.get("lat")),
+    lng: parseNumericInput(form.get("lng")),
     tideStationId: waterType === "freshwater" ? "" : String(form.get("tideStationId")).trim(),
     liveMode: String(form.get("liveMode")),
-    tempF: Number(form.get("tempF")),
-    windMph: Number(form.get("windMph")),
+    tempF: parseNumericInput(form.get("tempF")),
+    windMph: parseNumericInput(form.get("windMph")),
     pressureTrend: String(form.get("pressureTrend")),
     tideStage: String(form.get("tideStage")),
   };
@@ -1117,10 +1164,22 @@ async function refreshFishingSession() {
       return;
     }
 
-    const summary = await api(`/sessions/${session.id}`, { method: "GET" });
-    renderFishingSession(summary, true);
+    try {
+      const summary = await api(`/sessions/${session.id}`, { method: "GET" });
+      renderFishingSession(summary, true);
+    } catch {
+      renderFishingSession(buildActiveSessionFallbackSummary(session), true);
+      showAuthStatus("Active session found, but the detailed session summary could not be refreshed.", "warn");
+    }
   } catch {
+    if (currentFishingSession) {
+      renderFishingSession(currentFishingSession, true);
+      showAuthStatus("Session refresh failed. Showing the last known active session state.", "warn");
+      return;
+    }
+
     renderFishingSession(null, true);
+    showAuthStatus("Session refresh failed.", "warn");
   }
 }
 
