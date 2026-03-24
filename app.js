@@ -35,6 +35,7 @@ const scoreWarningsEl = document.getElementById("score-warnings");
 const scoreReasonsEl = document.getElementById("score-reasons");
 const biteWindowEl = document.getElementById("bite-window-output");
 const spotsEl = document.getElementById("spots-output");
+const intelligenceEl = document.getElementById("intelligence-output");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const fightEl = document.getElementById("fight-output");
@@ -367,6 +368,7 @@ function renderLocationRequiredState(message = "Enter latitude and longitude bef
   scoreBreakdownEl.innerHTML = "<li>Enter coordinates first.</li>";
   biteWindowEl.innerHTML = '<p class="muted">Enter coordinates to generate a bite window outlook.</p>';
   clearListWithMessage(spotsEl, "Spot recommendations pending location.");
+  if (intelligenceEl) intelligenceEl.innerHTML = '<p class="muted">Unified recommendation pending location.</p>';
   clearListWithMessage(targetsEl, "No targets generated until a location is entered.");
   setupEl.textContent = "Setup recommendation pending location.";
   fightEl.textContent = "Fight guidance pending location.";
@@ -463,6 +465,36 @@ async function getSpotRecommendations(input) {
   return response.json();
 }
 
+async function getUnifiedIntelligence(input) {
+  const params = new URLSearchParams({
+    lat: String(input.lat),
+    lng: String(input.lng),
+    waterType: input.waterType,
+    accessMode: input.accessMode,
+  });
+
+  if (input.tideStationId) params.set("tideStationId", input.tideStationId);
+  if (input.spot) params.set("spotName", input.spot);
+  if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+
+  const response = await fetch(`${API_BASE}/intelligence?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Intelligence endpoint failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
@@ -501,6 +533,34 @@ function renderSpotRecommendations(payload, modeLabel) {
     li.innerHTML = `<div class="item-sub"><strong>Warning:</strong> ${warning}</div>`;
     spotsEl.appendChild(li);
   });
+}
+
+function renderUnifiedIntelligence(payload, modeLabel) {
+  if (!intelligenceEl) return;
+
+  if (!payload) {
+    intelligenceEl.innerHTML = `<p class="muted">Unified recommendation unavailable in ${modeLabel}.</p>`;
+    return;
+  }
+
+  const reasons = Array.isArray(payload.explanation?.baseReasons) ? payload.explanation.baseReasons : [];
+  const warnings = Array.isArray(payload.explanation?.warnings) ? payload.explanation.warnings : [];
+  const signalsAligned = Array.isArray(payload.explanation?.metadata?.signalsAligned)
+    ? payload.explanation.metadata.signalsAligned
+    : [];
+
+  intelligenceEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(payload.confidence)}">${String(payload.confidence || "low").toUpperCase()}</span>
+      <strong>${escapeHtml(payload.targetSpecies || "No target selected")}</strong>
+    </div>
+    <p><strong>Spot:</strong> ${escapeHtml(payload.recommendedSpot || "n/a")}</p>
+    <p><strong>Rig:</strong> ${escapeHtml(payload.recommendedRig || "n/a")}</p>
+    <p><strong>Approach:</strong> ${escapeHtml(payload.recommendedApproach || "n/a")}</p>
+    <p><strong>Why:</strong> ${escapeHtml(reasons.join(" ") || "No unified explanation returned.")}</p>
+    <p><strong>Aligned signals:</strong> ${escapeHtml(signalsAligned.join(", ") || "None clearly aligned")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+  `;
 }
 
 function renderTargets(results, confidence, accessMode, alerts) {
@@ -1084,14 +1144,21 @@ async function refreshIntelligence() {
   renderBiteWindow(conditions.biteWindow || null, modeLabel);
 
   let spotPayload = null;
+  let intelligencePayload = null;
   if (modeLabel === "live") {
     try {
       spotPayload = await getSpotRecommendations(input);
     } catch {
       spotPayload = null;
     }
+    try {
+      intelligencePayload = await getUnifiedIntelligence(input);
+    } catch {
+      intelligencePayload = null;
+    }
   }
   renderSpotRecommendations(spotPayload, modeLabel);
+  renderUnifiedIntelligence(intelligencePayload, modeLabel);
 
   let speciesList = [];
   try {
@@ -1145,8 +1212,8 @@ async function refreshIntelligence() {
     nextWindowLabel: conditions.biteWindow?.nextWindow
       ? `${conditions.biteWindow.nextWindow.start} - ${conditions.biteWindow.nextWindow.end} (${conditions.biteWindow.nextWindow.type})`
       : "No upcoming window",
-    recommendedSpecies: topTargetName,
-    recommendedRig: rigPayload?.rigName || null,
+    recommendedSpecies: intelligencePayload?.targetSpecies || topTargetName,
+    recommendedRig: intelligencePayload?.recommendedRig || rigPayload?.rigName || null,
     regime,
     conditionsLabel: `${conditions.weather?.tempF ?? "n/a"} F, ${conditions.weather?.windMph ?? "n/a"} mph wind, tide ${conditions.tide?.stage || "n/a"}`,
   };
