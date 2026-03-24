@@ -192,9 +192,13 @@ function calculateBiteWindow(conditions) {
   const lat = Number(conditions?.spot?.lat);
   const lng = Number(conditions?.spot?.lng);
   const waterType = conditions?.spot?.waterType;
+  const tidalWater = waterType === 'saltwater' || waterType === 'brackish';
   const pressureTrend = normalizePressureTrend(conditions?.weather?.pressureTrend);
   const warnings = [];
   const reasons = [];
+  const nextHighAt = toDate(conditions?.tide?.nextHighAt);
+  const nextLowAt = toDate(conditions?.tide?.nextLowAt);
+  const hasTideTiming = Boolean(nextHighAt || nextLowAt);
 
   const windows = [
     ...buildSunWindows(observedAt, lat, lng),
@@ -209,6 +213,10 @@ function calculateBiteWindow(conditions) {
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     warnings.push('spot latitude/longitude missing; sunrise and sunset windows unavailable');
+  }
+
+  if (tidalWater && !hasTideTiming) {
+    warnings.push('tide transition timing unavailable; tide-window signal not applied');
   }
 
   if (pressureTrend === 'dropping') {
@@ -247,7 +255,7 @@ function calculateBiteWindow(conditions) {
         pressureTrend,
         signalsEvaluated: {
           sunriseSunset: Number.isFinite(lat) && Number.isFinite(lng),
-          tideTransitions: waterType === 'saltwater' || waterType === 'brackish',
+          tideTransitions: tidalWater && hasTideTiming,
           pressureTrend: Boolean(pressureTrend),
         },
       },

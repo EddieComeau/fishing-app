@@ -34,6 +34,7 @@ const scoreWarningTitleEl = document.getElementById("score-warning-title");
 const scoreWarningsEl = document.getElementById("score-warnings");
 const scoreReasonsEl = document.getElementById("score-reasons");
 const biteWindowEl = document.getElementById("bite-window-output");
+const spotsEl = document.getElementById("spots-output");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const fightEl = document.getElementById("fight-output");
@@ -365,6 +366,7 @@ function renderLocationRequiredState(message = "Enter latitude and longitude bef
   scoreReasonsEl.innerHTML = "<li>Latitude and longitude are required for live local estimates.</li>";
   scoreBreakdownEl.innerHTML = "<li>Enter coordinates first.</li>";
   biteWindowEl.innerHTML = '<p class="muted">Enter coordinates to generate a bite window outlook.</p>';
+  clearListWithMessage(spotsEl, "Spot recommendations pending location.");
   clearListWithMessage(targetsEl, "No targets generated until a location is entered.");
   setupEl.textContent = "Setup recommendation pending location.";
   fightEl.textContent = "Fight guidance pending location.";
@@ -430,6 +432,75 @@ function renderBiteWindow(outlook, modeLabel) {
     <p><strong>Why:</strong> ${reasons.join(" ") || "No bite-window explanation returned."}</p>
     ${warnings.length ? `<p><strong>Warnings:</strong> ${warnings.join(" ")}</p>` : ""}
   `;
+}
+
+async function getSpotRecommendations(input) {
+  const params = new URLSearchParams({
+    lat: String(input.lat),
+    lng: String(input.lng),
+    waterType: input.waterType,
+  });
+
+  if (input.tideStationId) params.set("tideStationId", input.tideStationId);
+  if (input.spot) params.set("spotName", input.spot);
+  if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+
+  const response = await fetch(`${API_BASE}/spots?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Spot endpoint failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function renderSpotRecommendations(payload, modeLabel) {
+  if (!spotsEl) return;
+  spotsEl.innerHTML = "";
+
+  if (!payload) {
+    const li = document.createElement("li");
+    li.textContent = `Spot recommendations unavailable in ${modeLabel}.`;
+    spotsEl.appendChild(li);
+    return;
+  }
+
+  const spots = Array.isArray(payload.spots) ? payload.spots : [];
+  const warnings = Array.isArray(payload.explanation?.warnings) ? payload.explanation.warnings : [];
+
+  if (!spots.length) {
+    const li = document.createElement("li");
+    li.textContent = "No spot recommendations available for this context.";
+    spotsEl.appendChild(li);
+    return;
+  }
+
+  spots.forEach((spot) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div class="item-top">
+        <strong>${spot.label || "Fishing spot"}</strong>
+        <span class="badge">${String(spot.confidence || "medium").toUpperCase()}</span>
+      </div>
+      <div class="item-sub">${spot.reason || "No spot explanation returned."}</div>
+    `;
+    spotsEl.appendChild(li);
+  });
+
+  warnings.forEach((warning) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="item-sub"><strong>Warning:</strong> ${warning}</div>`;
+    spotsEl.appendChild(li);
+  });
 }
 
 function renderTargets(results, confidence, accessMode, alerts) {
@@ -1011,6 +1082,16 @@ async function refreshIntelligence() {
   const regime = classifyRegime(conditions);
   const confidence = confidenceFor(conditions);
   renderBiteWindow(conditions.biteWindow || null, modeLabel);
+
+  let spotPayload = null;
+  if (modeLabel === "live") {
+    try {
+      spotPayload = await getSpotRecommendations(input);
+    } catch {
+      spotPayload = null;
+    }
+  }
+  renderSpotRecommendations(spotPayload, modeLabel);
 
   let speciesList = [];
   try {

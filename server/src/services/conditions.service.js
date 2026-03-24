@@ -17,6 +17,21 @@ function buildAlertsFallbackPack() {
   };
 }
 
+function buildTidesFallbackPack(tideStationId) {
+  return {
+    provider: 'NOAA CO-OPS',
+    fetchedAt: null,
+    observedAt: null,
+    stationId: tideStationId || null,
+    data: {
+      stage: 'n/a',
+      heightFt: null,
+      nextHighAt: null,
+      nextLowAt: null,
+    },
+  };
+}
+
 async function getConditions({ lat, lng, waterType, tideStationId, spotName, pressureTrend }) {
   const key = makeKey({ lat, lng, waterType, tideStationId, pressureTrend });
   const cached = getCache(key);
@@ -33,15 +48,17 @@ async function getConditions({ lat, lng, waterType, tideStationId, spotName, pre
     throw weatherResult.reason;
   }
 
-  if (tidesResult.status !== 'fulfilled') {
-    throw tidesResult.reason;
-  }
-
   const weatherPack = weatherResult.value;
-  const tidesPack = tidesResult.value;
+  const tidesPack = tidesResult.status === 'fulfilled'
+    ? tidesResult.value
+    : buildTidesFallbackPack(tideStationId);
   const alertsPack = alertsResult.status === 'fulfilled'
     ? alertsResult.value
     : buildAlertsFallbackPack();
+
+  if (tidesResult.status !== 'fulfilled') {
+    console.warn('FishDex tides fallback engaged:', tidesResult.reason?.message || tidesResult.reason);
+  }
 
   if (alertsResult.status !== 'fulfilled') {
     console.warn('FishDex alerts fallback engaged:', alertsResult.reason?.message || alertsResult.reason);
