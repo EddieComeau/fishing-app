@@ -3,6 +3,7 @@ const {
   getActiveSession,
   endSession,
   getSessionById,
+  listSessionHistory,
 } = require('../services/sessions.service');
 
 async function startSessionHandler(req, res) {
@@ -79,9 +80,24 @@ async function getSessionSummaryHandler(req, res) {
   }
 }
 
+async function listSessionHistoryHandler(req, res) {
+  try {
+    const sessions = await listSessionHistory(req.session.userId, {
+      status: req.query.status,
+      limit: req.query.limit,
+      savedSpotId: req.query.savedSpotId,
+    });
+    return res.json({ sessions });
+  } catch (error) {
+    const status = error.status || 500;
+    return res.status(status).json({ error: error.message || 'Failed to fetch session history' });
+  }
+}
+
 module.exports = {
   startSessionHandler,
   getActiveSessionHandler,
   endSessionHandler,
   getSessionSummaryHandler,
+  listSessionHistoryHandler,
 };

@@ -5,6 +5,7 @@ const {
   getActiveSessionHandler,
   endSessionHandler,
   getSessionSummaryHandler,
+  listSessionHistoryHandler,
 } = require('../controllers/sessions.controller');
 
 const router = express.Router();
@@ -12,6 +13,7 @@ const router = express.Router();
 router.use(requireAuth);
 router.post('/', startSessionHandler);
 router.get('/active', getActiveSessionHandler);
+router.get('/history', listSessionHistoryHandler);
 router.post('/:id/end', endSessionHandler);
 router.get('/:id', getSessionSummaryHandler);
 

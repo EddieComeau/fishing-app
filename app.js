@@ -77,6 +77,15 @@ const activeSessionSuggestionsEl = document.getElementById("active-session-sugge
 const activeSessionInsightsEl = document.getElementById("active-session-insights");
 const refreshSessionBtn = document.getElementById("refresh-session-btn");
 const endSessionBtn = document.getElementById("end-session-btn");
+const sessionHistoryNoteEl = document.getElementById("session-history-note");
+const sessionHistoryListEl = document.getElementById("session-history-list");
+const sessionHistoryDetailEl = document.getElementById("session-history-detail");
+const sessionHistoryDetailNameEl = document.getElementById("session-history-detail-name");
+const sessionHistoryDetailMetaEl = document.getElementById("session-history-detail-meta");
+const sessionHistoryDetailSummaryEl = document.getElementById("session-history-detail-summary");
+const sessionHistoryDetailSuggestionsWrapEl = document.getElementById("session-history-detail-suggestions-wrap");
+const sessionHistoryDetailSuggestionsEl = document.getElementById("session-history-detail-suggestions");
+const sessionHistoryDetailInsightsEl = document.getElementById("session-history-detail-insights");
 const speciesOptionsEl = document.getElementById("species-options");
 const speciesInputEl = document.getElementById("species-input");
 const analyticsNoteEl = document.getElementById("analytics-note");
@@ -91,6 +100,7 @@ let currentFishingSession = null;
 let currentIntelligenceSnapshot = null;
 let currentSavedSpots = [];
 let currentLoadedSavedSpotId = null;
+let currentSessionHistory = [];
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
 
@@ -704,6 +714,106 @@ function renderFight(top, accessMode) {
   `;
 }
 
+function buildSessionSummaryItems(summary, options = {}) {
+  const includeCurrentContext = Boolean(options.includeCurrentContext);
+  const items = [
+    ["Species Focus", summary.speciesFocus || "n/a"],
+    ["Saved Spot", summary.savedSpotName || summary.locationLabel || "n/a"],
+    ["Catches", summary.catches ?? 0],
+    ["Top Species", summary.topSpecies || "n/a"],
+    ["Top Rig", summary.topRig || "n/a"],
+    ["Activity At Start", summary.activityLevelAtStart || "n/a"],
+    ["Start Bite Score", summary.biteWindowStrength ?? "n/a"],
+    ["Last Catch", fmtIso(summary.lastCatchAt)],
+  ];
+
+  if (includeCurrentContext && currentIntelligenceSnapshot) {
+    items.push(["Current Activity", currentIntelligenceSnapshot.activityLevel || "n/a"]);
+    items.push(["Current Bite Score", currentIntelligenceSnapshot.biteWindowStrength ?? "n/a"]);
+    items.push(["Current Window", currentIntelligenceSnapshot.currentWindowLabel || "n/a"]);
+    items.push(["Next Window", currentIntelligenceSnapshot.nextWindowLabel || "n/a"]);
+    items.push(["Recommended Species", currentIntelligenceSnapshot.recommendedSpecies || "n/a"]);
+    items.push(["Recommended Rig", currentIntelligenceSnapshot.recommendedRig || "n/a"]);
+    items.push(["Current Regime", currentIntelligenceSnapshot.regime || "n/a"]);
+    items.push(["Current Conditions", currentIntelligenceSnapshot.conditionsLabel || "n/a"]);
+  }
+
+  return items;
+}
+
+function renderSessionSummaryList(listEl, items) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  items.forEach(([label, value]) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    listEl.appendChild(li);
+  });
+}
+
+function renderSuggestionList(listEl, wrapEl, suggestions, options = {}) {
+  if (!listEl || !wrapEl) return;
+
+  const labelTopSuggestion = Boolean(options.labelTopSuggestion);
+  listEl.innerHTML = "";
+
+  if (!Array.isArray(suggestions) || !suggestions.length) {
+    wrapEl.hidden = true;
+    return;
+  }
+
+  wrapEl.hidden = false;
+  suggestions.forEach((suggestion, index) => {
+    const suggestionWarnings = Array.isArray(suggestion.warnings) ? suggestion.warnings : [];
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div class="item-top">
+        <strong>${labelTopSuggestion && index === 0 ? `Top suggestion: ${suggestion.message || "Suggested adjustment"}` : suggestion.message || "Suggested adjustment"}</strong>
+        <span class="badge">${String(suggestion.priority || "medium").toUpperCase()} PRIORITY</span>
+      </div>
+      <div class="item-sub">Confidence: ${String(suggestion.confidence || "medium").toUpperCase()}</div>
+      <div class="item-sub">${suggestion.reason || "No explanation returned."}</div>
+      ${suggestionWarnings.length ? `<div class="item-sub">Warnings: ${suggestionWarnings.join("; ")}</div>` : ""}
+    `;
+    listEl.appendChild(li);
+  });
+}
+
+function collectSessionInsightLines(summary) {
+  const insightLines = Array.isArray(summary.insights) ? [...summary.insights] : [];
+  const explanationWarnings = Array.isArray(summary.explanation?.warnings) ? summary.explanation.warnings : [];
+  const explanationBaseReasons = Array.isArray(summary.explanation?.baseReasons) ? summary.explanation.baseReasons : [];
+
+  explanationWarnings.forEach((warning) => {
+    insightLines.push(`Warning: ${warning}`);
+  });
+
+  explanationBaseReasons.forEach((reason) => {
+    insightLines.push(reason);
+  });
+
+  return [...new Set(insightLines.map((line) => String(line || "").trim()).filter(Boolean))];
+}
+
+function renderInsightList(listEl, insights, emptyMessage) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  if (!insights.length) {
+    const li = document.createElement("li");
+    li.textContent = emptyMessage;
+    listEl.appendChild(li);
+    return;
+  }
+
+  insights.forEach((insight) => {
+    const li = document.createElement("li");
+    li.textContent = insight;
+    listEl.appendChild(li);
+  });
+}
+
 function renderFishingSession(summary, isLoggedIn) {
   if (!sessionModeNoteEl || !sessionStartForm || !activeSessionCardEl) return;
 
@@ -743,85 +853,11 @@ function renderFishingSession(summary, isLoggedIn) {
   if (endSessionBtn) endSessionBtn.hidden = false;
   activeSessionNameEl.textContent = summary.name || "Active Session";
   activeSessionMetaEl.textContent = `${summary.locationLabel || "Unknown location"} | ${summary.sessionDuration || "n/a"} | ${summary.status || "active"}`;
-
-  const summaryItems = [
-    ["Species Focus", summary.speciesFocus || "n/a"],
-    ["Catches", summary.catches ?? 0],
-    ["Top Species", summary.topSpecies || "n/a"],
-    ["Top Rig", summary.topRig || "n/a"],
-    ["Activity At Start", summary.activityLevelAtStart || "n/a"],
-    ["Start Bite Score", summary.biteWindowStrength ?? "n/a"],
-    ["Last Catch", fmtIso(summary.lastCatchAt)],
-  ];
-
-  if (currentIntelligenceSnapshot) {
-    summaryItems.push(["Current Activity", currentIntelligenceSnapshot.activityLevel || "n/a"]);
-    summaryItems.push(["Current Bite Score", currentIntelligenceSnapshot.biteWindowStrength ?? "n/a"]);
-    summaryItems.push(["Current Window", currentIntelligenceSnapshot.currentWindowLabel || "n/a"]);
-    summaryItems.push(["Next Window", currentIntelligenceSnapshot.nextWindowLabel || "n/a"]);
-    summaryItems.push(["Recommended Species", currentIntelligenceSnapshot.recommendedSpecies || "n/a"]);
-    summaryItems.push(["Recommended Rig", currentIntelligenceSnapshot.recommendedRig || "n/a"]);
-    summaryItems.push(["Current Regime", currentIntelligenceSnapshot.regime || "n/a"]);
-    summaryItems.push(["Current Conditions", currentIntelligenceSnapshot.conditionsLabel || "n/a"]);
-  }
-
-  summaryItems.forEach(([label, value]) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-    activeSessionSummaryEl.appendChild(li);
+  renderSessionSummaryList(activeSessionSummaryEl, buildSessionSummaryItems(summary, { includeCurrentContext: true }));
+  renderSuggestionList(activeSessionSuggestionsEl, activeSessionSuggestionsWrapEl, summary.adaptiveSuggestions || [], {
+    labelTopSuggestion: true,
   });
-
-  const adaptiveSuggestions = Array.isArray(summary.adaptiveSuggestions) ? summary.adaptiveSuggestions : [];
-  if (activeSessionSuggestionsWrapEl && activeSessionSuggestionsEl) {
-    activeSessionSuggestionsEl.innerHTML = "";
-
-    if (adaptiveSuggestions.length) {
-      activeSessionSuggestionsWrapEl.hidden = false;
-      adaptiveSuggestions.forEach((suggestion, index) => {
-        const suggestionWarnings = Array.isArray(suggestion.warnings) ? suggestion.warnings : [];
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <div class="item-top">
-            <strong>${index === 0 ? `Top suggestion: ${suggestion.message || "Suggested adjustment"}` : suggestion.message || "Suggested adjustment"}</strong>
-            <span class="badge">${String(suggestion.priority || "medium").toUpperCase()} PRIORITY</span>
-          </div>
-          <div class="item-sub">Confidence: ${String(suggestion.confidence || "medium").toUpperCase()}</div>
-          <div class="item-sub">${suggestion.reason || "No explanation returned."}</div>
-          ${suggestionWarnings.length ? `<div class="item-sub">Warnings: ${suggestionWarnings.join("; ")}</div>` : ""}
-        `;
-        activeSessionSuggestionsEl.appendChild(li);
-      });
-    } else {
-      activeSessionSuggestionsWrapEl.hidden = true;
-    }
-  }
-
-  const insightLines = Array.isArray(summary.insights) ? [...summary.insights] : [];
-  const explanationWarnings = Array.isArray(summary.explanation?.warnings) ? summary.explanation.warnings : [];
-  const explanationBaseReasons = Array.isArray(summary.explanation?.baseReasons) ? summary.explanation.baseReasons : [];
-
-  explanationWarnings.forEach((warning) => {
-    insightLines.push(`Warning: ${warning}`);
-  });
-
-  explanationBaseReasons.forEach((reason) => {
-    insightLines.push(reason);
-  });
-
-  const uniqueInsights = [...new Set(insightLines.map((line) => String(line || "").trim()).filter(Boolean))];
-
-  if (!uniqueInsights.length) {
-    const li = document.createElement("li");
-    li.textContent = "No session insights available yet.";
-    activeSessionInsightsEl.appendChild(li);
-    return;
-  }
-
-  uniqueInsights.forEach((insight) => {
-    const li = document.createElement("li");
-    li.textContent = insight;
-    activeSessionInsightsEl.appendChild(li);
-  });
+  renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No session insights available yet.");
 }
 
 function buildActiveSessionFallbackSummary(session) {
@@ -861,6 +897,109 @@ function buildActiveSessionFallbackSummary(session) {
       "Refresh again to load the latest session rollups.",
     ],
   };
+}
+
+function clearSessionHistoryDetail() {
+  if (!sessionHistoryDetailEl) return;
+  sessionHistoryDetailEl.hidden = true;
+  if (sessionHistoryDetailNameEl) sessionHistoryDetailNameEl.textContent = "";
+  if (sessionHistoryDetailMetaEl) sessionHistoryDetailMetaEl.textContent = "";
+  if (sessionHistoryDetailSummaryEl) sessionHistoryDetailSummaryEl.innerHTML = "";
+  if (sessionHistoryDetailSuggestionsWrapEl) sessionHistoryDetailSuggestionsWrapEl.hidden = true;
+  if (sessionHistoryDetailSuggestionsEl) sessionHistoryDetailSuggestionsEl.innerHTML = "";
+  if (sessionHistoryDetailInsightsEl) sessionHistoryDetailInsightsEl.innerHTML = "";
+}
+
+function renderSessionHistoryDetail(summary) {
+  if (!summary || !sessionHistoryDetailEl) return;
+
+  sessionHistoryDetailEl.hidden = false;
+  sessionHistoryDetailNameEl.textContent = summary.name || "Trip Detail";
+  sessionHistoryDetailMetaEl.textContent = `${summary.locationLabel || summary.savedSpotName || "Unknown location"} | ${summary.sessionDuration || "n/a"} | ${summary.status || "ended"}`;
+  renderSessionSummaryList(
+    sessionHistoryDetailSummaryEl,
+    buildSessionSummaryItems(summary, { includeCurrentContext: false })
+  );
+  renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
+  renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insights available yet.");
+}
+
+async function loadSessionHistoryDetail(sessionId) {
+  if (!currentUser || !Number.isInteger(sessionId)) return;
+
+  try {
+    const summary = await api(`/sessions/${sessionId}`, { method: "GET" });
+    renderSessionHistoryDetail(summary);
+  } catch (error) {
+    clearSessionHistoryDetail();
+    showAuthStatus(error.message, "warn");
+  }
+}
+
+function renderSessionHistory(sessions, isLoggedIn) {
+  if (!sessionHistoryNoteEl || !sessionHistoryListEl) return;
+
+  currentSessionHistory = Array.isArray(sessions) ? sessions : [];
+  sessionHistoryListEl.innerHTML = "";
+
+  if (!isLoggedIn) {
+    sessionHistoryNoteEl.hidden = false;
+    sessionHistoryNoteEl.textContent = "Login to review previous outings.";
+    sessionHistoryListEl.hidden = true;
+    clearSessionHistoryDetail();
+    return;
+  }
+
+  sessionHistoryNoteEl.hidden = false;
+
+  if (!currentSessionHistory.length) {
+    sessionHistoryNoteEl.textContent = "No completed trips yet. End a session to add it to history.";
+    sessionHistoryListEl.hidden = true;
+    clearSessionHistoryDetail();
+    return;
+  }
+
+  sessionHistoryNoteEl.textContent = "Ended sessions appear here newest first. Open one to load its existing deterministic trip summary.";
+  sessionHistoryListEl.hidden = false;
+
+  currentSessionHistory.forEach((session) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div class="item-top">
+        <strong>${session.name || "Ended Session"}</strong>
+        <span class="badge">${String(session.status || "ended").toUpperCase()}</span>
+      </div>
+      <div class="item-sub">${session.locationLabel || session.savedSpotName || "Unknown location"} | ${session.sessionDuration || "n/a"} | Started ${fmtIso(session.startedAt)}</div>
+      <div class="item-sub">Catches: ${session.summary?.catches ?? 0} | Top Species: ${session.summary?.topSpecies || "n/a"} | Top Rig: ${session.summary?.topRig || "n/a"}</div>
+      ${session.savedSpotName ? `<div class="item-sub">Saved Spot: ${session.savedSpotName}</div>` : ""}
+    `;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ghost";
+    button.textContent = "Open Trip";
+    button.addEventListener("click", () => {
+      loadSessionHistoryDetail(session.id);
+    });
+    li.appendChild(button);
+
+    sessionHistoryListEl.appendChild(li);
+  });
+}
+
+async function refreshSessionHistory() {
+  if (!currentUser) {
+    renderSessionHistory([], false);
+    return;
+  }
+
+  try {
+    const payload = await api("/sessions/history", { method: "GET" });
+    renderSessionHistory(payload.sessions || [], true);
+  } catch (error) {
+    renderSessionHistory([], true);
+    sessionHistoryNoteEl.textContent = error.message || "Session history could not be loaded.";
+  }
 }
 
 function buildSessionDefaultName() {
@@ -1543,6 +1682,7 @@ async function refreshSession() {
     await refreshAnalytics();
     await refreshSavedSpots();
     await refreshFishingSession();
+    await refreshSessionHistory();
   } catch {
     currentUser = null;
     authForms.hidden = false;
@@ -1553,6 +1693,7 @@ async function refreshSession() {
     renderAnalytics(null, false);
     await refreshSavedSpots();
     renderFishingSession(null, false);
+    renderSessionHistory([], false);
     showAuthStatus("Not logged in.", "warn");
   }
 }
@@ -1742,6 +1883,7 @@ if (sessionStartForm) {
       sessionStartForm.reset();
       syncSessionStartDefaults();
       await refreshFishingSession();
+      await refreshSessionHistory();
     } catch (error) {
       showAuthStatus(error.message, "warn");
     } finally {
@@ -1765,6 +1907,7 @@ if (endSessionBtn) {
         method: "POST",
       });
       await refreshFishingSession();
+      await refreshSessionHistory();
     } catch (error) {
       showAuthStatus(error.message, "warn");
     } finally {

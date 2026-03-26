@@ -262,9 +262,118 @@ async function getSessionById(userId, sessionId, options = {}) {
   };
 }
 
+async function listSessionHistory(userId, options = {}) {
+  const status = options.status ? String(options.status).trim().toLowerCase() : 'ended';
+  const limit = options.limit === undefined || options.limit === null || options.limit === ''
+    ? 20
+    : Number(options.limit);
+  const savedSpotId = options.savedSpotId === undefined || options.savedSpotId === null || options.savedSpotId === ''
+    ? null
+    : Number(options.savedSpotId);
+
+  if (!['ended', 'active', 'all'].includes(status)) {
+    const err = new Error('status must be ended, active, or all');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    const err = new Error('limit must be an integer between 1 and 100');
+    err.status = 400;
+    throw err;
+  }
+
+  if (savedSpotId !== null) {
+    if (!Number.isInteger(savedSpotId)) {
+      const err = new Error('savedSpotId must be an integer');
+      err.status = 400;
+      throw err;
+    }
+
+    await assertSavedSpotOwnership(userId, savedSpotId);
+  }
+
+  const conditions = ['fs.user_id = $1'];
+  const params = [userId];
+
+  if (status !== 'all') {
+    params.push(status);
+    conditions.push(`fs.status = $${params.length}`);
+  }
+
+  if (savedSpotId !== null) {
+    params.push(savedSpotId);
+    conditions.push(`fs.saved_spot_id = $${params.length}`);
+  }
+
+  params.push(limit);
+
+  const result = await query(
+    `SELECT
+       fs.id,
+       fs.user_id,
+       fs.name,
+       fs.location_label,
+       fs.species_focus,
+       fs.saved_spot_id,
+       fs.activity_level_at_start,
+       fs.bite_window_score_start,
+       fs.started_at,
+       fs.ended_at,
+       fs.status,
+       ss.name AS saved_spot_name,
+       COUNT(c.id)::int AS catches,
+       (
+         SELECT c2.species
+         FROM catches c2
+         WHERE c2.user_id = fs.user_id AND c2.session_id = fs.id
+         GROUP BY c2.species
+         ORDER BY COUNT(*) DESC, c2.species ASC
+         LIMIT 1
+       ) AS top_species,
+       (
+         SELECT COALESCE(NULLIF(TRIM(c3.rig_name), ''), 'Unknown')
+         FROM catches c3
+         WHERE c3.user_id = fs.user_id AND c3.session_id = fs.id
+         GROUP BY COALESCE(NULLIF(TRIM(c3.rig_name), ''), 'Unknown')
+         ORDER BY COUNT(*) DESC, COALESCE(NULLIF(TRIM(c3.rig_name), ''), 'Unknown') ASC
+         LIMIT 1
+       ) AS top_rig
+     FROM fishing_sessions fs
+     LEFT JOIN catches c
+       ON c.user_id = fs.user_id AND c.session_id = fs.id
+     LEFT JOIN saved_spots ss
+       ON ss.id = fs.saved_spot_id AND ss.user_id = fs.user_id
+     WHERE ${conditions.join(' AND ')}
+     GROUP BY fs.id, ss.name
+     ORDER BY COALESCE(fs.ended_at, fs.started_at) DESC, fs.id DESC
+     LIMIT $${params.length}`,
+    params
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    locationLabel: row.location_label,
+    speciesFocus: row.species_focus,
+    savedSpotId: row.saved_spot_id,
+    savedSpotName: row.saved_spot_name || null,
+    status: row.status,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    sessionDuration: formatDuration(row.started_at, row.ended_at),
+    summary: {
+      catches: row.catches || 0,
+      topSpecies: row.top_species || null,
+      topRig: row.top_rig || null,
+    },
+  }));
+}
+
 module.exports = {
   createSession,
   getActiveSession,
   endSession,
   getSessionById,
+  listSessionHistory,
 };
