@@ -1,6 +1,7 @@
 const { query } = require('../config/db');
 const { getAdaptiveSuggestions } = require('./sessionAdaptive.service');
 const { getUnifiedIntelligence } = require('./intelligenceOrchestrator.service');
+const { assertSavedSpotOwnership } = require('./savedSpots.service');
 
 function buildSessionSummaryInsights(summary) {
   const insights = [];
@@ -45,6 +46,9 @@ async function createSession(userId, payload) {
   const name = String(payload.name || '').trim();
   const locationLabel = payload.locationLabel ? String(payload.locationLabel).trim() : null;
   const speciesFocus = payload.speciesFocus ? String(payload.speciesFocus).trim() : null;
+  const savedSpotId = payload.savedSpotId === undefined || payload.savedSpotId === null || payload.savedSpotId === ''
+    ? null
+    : Number(payload.savedSpotId);
   const activityLevelAtStart = payload.activityLevelAtStart
     ? String(payload.activityLevelAtStart).trim().toLowerCase()
     : null;
@@ -54,6 +58,12 @@ async function createSession(userId, payload) {
 
   if (!name) {
     const err = new Error('name is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (savedSpotId !== null && !Number.isInteger(savedSpotId)) {
+    const err = new Error('savedSpotId must be an integer');
     err.status = 400;
     throw err;
   }
@@ -73,12 +83,16 @@ async function createSession(userId, payload) {
     throw err;
   }
 
+  if (savedSpotId !== null) {
+    await assertSavedSpotOwnership(userId, savedSpotId);
+  }
+
   try {
     const result = await query(
-      `INSERT INTO fishing_sessions (user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'active')
-       RETURNING id, user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, started_at, ended_at, status`,
-      [userId, name, locationLabel, speciesFocus, activityLevelAtStart, biteWindowStrength]
+      `INSERT INTO fishing_sessions (user_id, name, location_label, species_focus, saved_spot_id, activity_level_at_start, bite_window_score_start, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
+       RETURNING id, user_id, name, location_label, species_focus, saved_spot_id, activity_level_at_start, bite_window_score_start, started_at, ended_at, status`,
+      [userId, name, locationLabel, speciesFocus, savedSpotId, activityLevelAtStart, biteWindowStrength]
     );
 
     return result.rows[0];
@@ -94,7 +108,7 @@ async function createSession(userId, payload) {
 
 async function getActiveSession(userId) {
   const result = await query(
-    `SELECT id, user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, started_at, ended_at, status
+    `SELECT id, user_id, name, location_label, species_focus, saved_spot_id, activity_level_at_start, bite_window_score_start, started_at, ended_at, status
      FROM fishing_sessions
      WHERE user_id = $1 AND status = 'active'
      ORDER BY started_at DESC
@@ -110,7 +124,7 @@ async function endSession(userId, sessionId) {
     `UPDATE fishing_sessions
      SET status = 'ended', ended_at = NOW()
      WHERE id = $1 AND user_id = $2 AND status = 'active'
-     RETURNING id, user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, started_at, ended_at, status`,
+     RETURNING id, user_id, name, location_label, species_focus, saved_spot_id, activity_level_at_start, bite_window_score_start, started_at, ended_at, status`,
     [sessionId, userId]
   );
 
@@ -125,7 +139,7 @@ async function endSession(userId, sessionId) {
 
 async function getSessionById(userId, sessionId, options = {}) {
   const sessionRes = await query(
-    `SELECT id, user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, started_at, ended_at, status
+    `SELECT id, user_id, name, location_label, species_focus, saved_spot_id, activity_level_at_start, bite_window_score_start, started_at, ended_at, status
      FROM fishing_sessions
      WHERE id = $1 AND user_id = $2`,
     [sessionId, userId]
@@ -191,6 +205,7 @@ async function getSessionById(userId, sessionId, options = {}) {
     name: session.name,
     locationLabel: session.location_label,
     speciesFocus: session.species_focus,
+    savedSpotId: session.saved_spot_id,
     status: session.status,
     startedAt: session.started_at,
     endedAt: session.ended_at,

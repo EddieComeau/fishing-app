@@ -67,6 +67,27 @@ async function ensureSchema() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS saved_spots (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      latitude NUMERIC NOT NULL,
+      longitude NUMERIC NOT NULL,
+      water_type TEXT NOT NULL,
+      tide_station_id TEXT,
+      location_label TEXT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_saved_spots_user_updated_at
+    ON saved_spots(user_id, updated_at DESC, created_at DESC);
+  `);
+
+  await pool.query(`
     ALTER TABLE fishing_sessions
     ADD COLUMN IF NOT EXISTS activity_level_at_start TEXT;
   `);
@@ -74,6 +95,11 @@ async function ensureSchema() {
   await pool.query(`
     ALTER TABLE fishing_sessions
     ADD COLUMN IF NOT EXISTS bite_window_score_start INTEGER;
+  `);
+
+  await pool.query(`
+    ALTER TABLE fishing_sessions
+    ADD COLUMN IF NOT EXISTS saved_spot_id INTEGER REFERENCES saved_spots(id) ON DELETE SET NULL;
   `);
 
   await pool.query(`

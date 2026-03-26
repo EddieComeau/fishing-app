@@ -151,6 +151,33 @@
           </label>
           <button type="submit">Refresh Intelligence</button>
         </form>
+        <div id="saved-spots-panel" hidden>
+          <h3>Saved Spots</h3>
+          <p id="saved-spots-note" class="muted">Save a trusted location context so you can reload it quickly next time.</p>
+          <label>
+            Saved Spot List
+            <select id="saved-spots-select">
+              <option value="">No saved spots yet</option>
+            </select>
+          </label>
+          <div class="action-row">
+            <button id="load-saved-spot-btn" class="ghost" type="button">Load Selected</button>
+            <button id="delete-saved-spot-btn" class="ghost" type="button">Delete Selected</button>
+          </div>
+          <label>
+            Saved Spot Name
+            <input id="saved-spot-name" type="text" placeholder="North Jetty" />
+          </label>
+          <label>
+            Saved Spot Notes
+            <textarea id="saved-spot-notes" rows="3" placeholder="Incoming tide, inlet side, best on moving water"></textarea>
+          </label>
+          <div class="action-row">
+            <button id="save-current-spot-btn" class="ghost" type="button">Save Current Context</button>
+            <button id="update-saved-spot-btn" class="ghost" type="button">Update Selected</button>
+          </div>
+        </div>
+        <p id="saved-spots-auth-note" class="muted">Login to save and reload fishing locations.</p>
       </section>
 
       <section class="card wide">

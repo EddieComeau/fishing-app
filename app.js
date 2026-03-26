@@ -20,6 +20,16 @@ const tideStationInputEl = contextForm?.querySelector('input[name="tideStationId
 const useMyLocationBtn = document.getElementById("use-my-location-btn");
 const locationAssistNoteEl = document.getElementById("location-assist-note");
 const tideStationWrapEl = document.getElementById("tide-station-wrap");
+const savedSpotsPanelEl = document.getElementById("saved-spots-panel");
+const savedSpotsNoteEl = document.getElementById("saved-spots-note");
+const savedSpotsAuthNoteEl = document.getElementById("saved-spots-auth-note");
+const savedSpotsSelectEl = document.getElementById("saved-spots-select");
+const loadSavedSpotBtn = document.getElementById("load-saved-spot-btn");
+const deleteSavedSpotBtn = document.getElementById("delete-saved-spot-btn");
+const saveCurrentSpotBtn = document.getElementById("save-current-spot-btn");
+const updateSavedSpotBtn = document.getElementById("update-saved-spot-btn");
+const savedSpotNameInputEl = document.getElementById("saved-spot-name");
+const savedSpotNotesInputEl = document.getElementById("saved-spot-notes");
 const statusBannerEl = document.getElementById("status-banner");
 const snapshotEl = document.getElementById("snapshot");
 const scoreSummaryEl = document.getElementById("score-summary");
@@ -79,6 +89,8 @@ const speciesSearchCache = new Map();
 let currentRigRecommendation = null;
 let currentFishingSession = null;
 let currentIntelligenceSnapshot = null;
+let currentSavedSpots = [];
+let currentLoadedSavedSpotId = null;
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
 
@@ -94,6 +106,12 @@ function setLocationAssistNote(message, type = "muted") {
   if (!locationAssistNoteEl) return;
   locationAssistNoteEl.textContent = message;
   locationAssistNoteEl.className = type === "warn" ? "status warn" : "muted";
+}
+
+function setSavedSpotsNote(message, type = "muted") {
+  if (!savedSpotsNoteEl) return;
+  savedSpotsNoteEl.textContent = message;
+  savedSpotsNoteEl.className = type === "warn" ? "status warn" : type === "ok" ? "status ok" : "muted";
 }
 
 function showStatus(message, type) {
@@ -901,6 +919,112 @@ function parseContext() {
   };
 }
 
+function setSavedSpotSelection(savedSpotId) {
+  currentLoadedSavedSpotId = Number.isInteger(savedSpotId) ? savedSpotId : null;
+  if (savedSpotsSelectEl) {
+    savedSpotsSelectEl.value = currentLoadedSavedSpotId ? String(currentLoadedSavedSpotId) : "";
+  }
+}
+
+function populateSavedSpotFieldsFromContext() {
+  if (savedSpotNameInputEl && !String(savedSpotNameInputEl.value || "").trim()) {
+    savedSpotNameInputEl.value = String(spotInputEl?.value || "").trim();
+  }
+}
+
+function applySavedSpotToContext(spot) {
+  if (!spot) return;
+
+  if (spotInputEl) spotInputEl.value = spot.locationLabel || spot.name || "";
+  if (waterTypeEl) waterTypeEl.value = spot.waterType || "freshwater";
+  updateTideStationVisibility();
+  if (latInputEl) latInputEl.value = Number(spot.latitude).toFixed(6);
+  if (lngInputEl) lngInputEl.value = Number(spot.longitude).toFixed(6);
+  if (tideStationInputEl) tideStationInputEl.value = spot.tideStationId || "";
+  if (savedSpotNameInputEl) savedSpotNameInputEl.value = spot.name || "";
+  if (savedSpotNotesInputEl) savedSpotNotesInputEl.value = spot.notes || "";
+
+  setSavedSpotSelection(spot.id);
+  updateLocationAssistForContext();
+  syncSessionStartDefaults();
+}
+
+function buildSavedSpotPayloadFromContext() {
+  const context = parseContext();
+  const coordinateValidationMessage = getCoordinateValidationMessage(context);
+  if (coordinateValidationMessage) {
+    throw new Error(coordinateValidationMessage);
+  }
+
+  const name = String(savedSpotNameInputEl?.value || context.spot || "").trim();
+  if (!name) {
+    throw new Error("Saved spot name is required");
+  }
+
+  return {
+    name,
+    latitude: context.lat,
+    longitude: context.lng,
+    waterType: context.waterType,
+    tideStationId: context.tideStationId || null,
+    locationLabel: context.spot || null,
+    notes: String(savedSpotNotesInputEl?.value || "").trim() || null,
+  };
+}
+
+function renderSavedSpots(spots) {
+  currentSavedSpots = Array.isArray(spots) ? spots : [];
+
+  if (!savedSpotsSelectEl) return;
+
+  savedSpotsSelectEl.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = currentSavedSpots.length ? "Choose a saved spot" : "No saved spots yet";
+  savedSpotsSelectEl.appendChild(placeholder);
+
+  currentSavedSpots.forEach((spot) => {
+    const option = document.createElement("option");
+    option.value = String(spot.id);
+    option.textContent = `${spot.name} (${spot.waterType})`;
+    savedSpotsSelectEl.appendChild(option);
+  });
+
+  if (currentLoadedSavedSpotId && currentSavedSpots.some((spot) => spot.id === currentLoadedSavedSpotId)) {
+    savedSpotsSelectEl.value = String(currentLoadedSavedSpotId);
+  } else {
+    setSavedSpotSelection(null);
+  }
+}
+
+async function refreshSavedSpots() {
+  if (!savedSpotsPanelEl || !savedSpotsAuthNoteEl) return;
+
+  if (!currentUser) {
+    savedSpotsPanelEl.hidden = true;
+    savedSpotsAuthNoteEl.hidden = false;
+    renderSavedSpots([]);
+    if (savedSpotNameInputEl) savedSpotNameInputEl.value = "";
+    if (savedSpotNotesInputEl) savedSpotNotesInputEl.value = "";
+    setSavedSpotsNote("Login to save and reload fishing locations.");
+    return;
+  }
+
+  savedSpotsPanelEl.hidden = false;
+  savedSpotsAuthNoteEl.hidden = true;
+
+  try {
+    const payload = await api("/spots/saved", { method: "GET" });
+    renderSavedSpots(payload.spots || []);
+    setSavedSpotsNote("Save a trusted location context so you can reload it quickly next time.");
+    populateSavedSpotFieldsFromContext();
+  } catch (error) {
+    renderSavedSpots([]);
+    setSavedSpotsNote(error.message, "warn");
+  }
+}
+
 function updateLocationAssistForContext() {
   const input = parseContext();
   const coordinateValidationMessage = getCoordinateValidationMessage(input);
@@ -1417,6 +1541,7 @@ async function refreshSession() {
     renderCatches(items);
 
     await refreshAnalytics();
+    await refreshSavedSpots();
     await refreshFishingSession();
   } catch {
     currentUser = null;
@@ -1426,6 +1551,7 @@ async function refreshSession() {
     catchAuthNote.hidden = false;
     renderCatches([]);
     renderAnalytics(null, false);
+    await refreshSavedSpots();
     renderFishingSession(null, false);
     showAuthStatus("Not logged in.", "warn");
   }
@@ -1601,6 +1727,7 @@ if (sessionStartForm) {
       name: String(form.get("name") || "").trim(),
       locationLabel: context.spot || null,
       speciesFocus: String(form.get("speciesFocus") || "").trim() || null,
+      savedSpotId: currentLoadedSavedSpotId || null,
       activityLevelAtStart: currentIntelligenceSnapshot?.activityLevel || null,
       biteWindowStrength: currentIntelligenceSnapshot?.biteWindowStrength ?? null,
     };
@@ -1659,22 +1786,162 @@ if (refreshSessionBtn) {
   });
 }
 
+if (saveCurrentSpotBtn) {
+  saveCurrentSpotBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      setSavedSpotsNote("Login to save fishing locations.", "warn");
+      return;
+    }
+
+    let payload;
+    try {
+      payload = buildSavedSpotPayloadFromContext();
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+      return;
+    }
+
+    const restoreButton = setButtonBusy(saveCurrentSpotBtn, "Saving...");
+
+    try {
+      const response = await api("/spots/saved", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setSavedSpotSelection(response.spot?.id || null);
+      await refreshSavedSpots();
+      setSavedSpotsNote("Saved current location context.", "ok");
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
+if (loadSavedSpotBtn) {
+  loadSavedSpotBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      setSavedSpotsNote("Login to load saved fishing locations.", "warn");
+      return;
+    }
+
+    const selectedId = Number(savedSpotsSelectEl?.value || "");
+    if (!Number.isInteger(selectedId)) {
+      setSavedSpotsNote("Select a saved spot first.", "warn");
+      return;
+    }
+
+    const restoreButton = setButtonBusy(loadSavedSpotBtn, "Loading...");
+
+    try {
+      const response = await api(`/spots/saved/${selectedId}`, { method: "GET" });
+      applySavedSpotToContext(response.spot);
+      setSavedSpotsNote(`Loaded ${response.spot?.name || "saved spot"} into the current context.`, "ok");
+      showStatus("Saved spot loaded into the context form. Refresh intelligence when you are ready.", "ok");
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
+if (updateSavedSpotBtn) {
+  updateSavedSpotBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      setSavedSpotsNote("Login to update saved fishing locations.", "warn");
+      return;
+    }
+
+    const selectedId = Number(savedSpotsSelectEl?.value || "");
+    if (!Number.isInteger(selectedId)) {
+      setSavedSpotsNote("Select a saved spot to update.", "warn");
+      return;
+    }
+
+    let payload;
+    try {
+      payload = buildSavedSpotPayloadFromContext();
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+      return;
+    }
+
+    const restoreButton = setButtonBusy(updateSavedSpotBtn, "Updating...");
+
+    try {
+      const response = await api(`/spots/saved/${selectedId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      setSavedSpotSelection(response.spot?.id || selectedId);
+      await refreshSavedSpots();
+      setSavedSpotsNote("Saved spot updated.", "ok");
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
+if (deleteSavedSpotBtn) {
+  deleteSavedSpotBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      setSavedSpotsNote("Login to delete saved fishing locations.", "warn");
+      return;
+    }
+
+    const selectedId = Number(savedSpotsSelectEl?.value || "");
+    if (!Number.isInteger(selectedId)) {
+      setSavedSpotsNote("Select a saved spot to delete.", "warn");
+      return;
+    }
+
+    const restoreButton = setButtonBusy(deleteSavedSpotBtn, "Deleting...");
+
+    try {
+      await api(`/spots/saved/${selectedId}`, { method: "DELETE" });
+      if (currentLoadedSavedSpotId === selectedId) {
+        setSavedSpotSelection(null);
+      }
+      await refreshSavedSpots();
+      setSavedSpotsNote("Saved spot deleted.", "ok");
+    } catch (error) {
+      setSavedSpotsNote(error.message, "warn");
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
 waterTypeEl.addEventListener("change", updateTideStationVisibility);
-waterTypeEl.addEventListener("change", updateLocationAssistForContext);
+waterTypeEl.addEventListener("change", () => {
+  setSavedSpotSelection(null);
+  updateLocationAssistForContext();
+});
 if (spotInputEl) spotInputEl.addEventListener("input", () => {
+  setSavedSpotSelection(null);
   syncSessionStartDefaults();
   updateLocationAssistForContext();
+  populateSavedSpotFieldsFromContext();
 });
 if (accessModeInputEl) accessModeInputEl.addEventListener("change", syncSessionStartDefaults);
 if (latInputEl) latInputEl.addEventListener("input", () => {
+  setSavedSpotSelection(null);
   syncSessionStartDefaults();
   updateLocationAssistForContext();
+  populateSavedSpotFieldsFromContext();
 });
 if (lngInputEl) lngInputEl.addEventListener("input", () => {
+  setSavedSpotSelection(null);
   syncSessionStartDefaults();
   updateLocationAssistForContext();
+  populateSavedSpotFieldsFromContext();
 });
 if (tideStationInputEl) tideStationInputEl.addEventListener("input", () => {
+  setSavedSpotSelection(null);
   syncSessionStartDefaults();
   updateLocationAssistForContext();
 });
@@ -1694,6 +1961,7 @@ if (analyticsRefreshBtn) {
 
 updateTideStationVisibility();
 updateLocationAssistForContext();
+populateSavedSpotFieldsFromContext();
 scoreBreakdownEl.hidden = true;
 if (scoreBreakdownToggleEl) scoreBreakdownToggleEl.textContent = "Show scoring breakdown";
 refreshIntelligence();
