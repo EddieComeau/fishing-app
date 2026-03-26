@@ -62,6 +62,8 @@ const activeSessionCardEl = document.getElementById("active-session-card");
 const activeSessionNameEl = document.getElementById("active-session-name");
 const activeSessionMetaEl = document.getElementById("active-session-meta");
 const activeSessionSummaryEl = document.getElementById("active-session-summary");
+const activeSessionSuggestionsWrapEl = document.getElementById("active-session-suggestions-wrap");
+const activeSessionSuggestionsEl = document.getElementById("active-session-suggestions");
 const activeSessionInsightsEl = document.getElementById("active-session-insights");
 const refreshSessionBtn = document.getElementById("refresh-session-btn");
 const endSessionBtn = document.getElementById("end-session-btn");
@@ -692,6 +694,8 @@ function renderFishingSession(summary, isLoggedIn) {
   activeSessionNameEl.textContent = "";
   activeSessionMetaEl.textContent = "";
   activeSessionSummaryEl.innerHTML = "";
+  if (activeSessionSuggestionsWrapEl) activeSessionSuggestionsWrapEl.hidden = true;
+  if (activeSessionSuggestionsEl) activeSessionSuggestionsEl.innerHTML = "";
   activeSessionInsightsEl.innerHTML = "";
 
   if (!isLoggedIn) {
@@ -748,6 +752,31 @@ function renderFishingSession(summary, isLoggedIn) {
     li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
     activeSessionSummaryEl.appendChild(li);
   });
+
+  const adaptiveSuggestions = Array.isArray(summary.adaptiveSuggestions) ? summary.adaptiveSuggestions : [];
+  if (activeSessionSuggestionsWrapEl && activeSessionSuggestionsEl) {
+    activeSessionSuggestionsEl.innerHTML = "";
+
+    if (adaptiveSuggestions.length) {
+      activeSessionSuggestionsWrapEl.hidden = false;
+      adaptiveSuggestions.forEach((suggestion, index) => {
+        const suggestionWarnings = Array.isArray(suggestion.warnings) ? suggestion.warnings : [];
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="item-top">
+            <strong>${index === 0 ? `Top suggestion: ${suggestion.message || "Suggested adjustment"}` : suggestion.message || "Suggested adjustment"}</strong>
+            <span class="badge">${String(suggestion.priority || "medium").toUpperCase()} PRIORITY</span>
+          </div>
+          <div class="item-sub">Confidence: ${String(suggestion.confidence || "medium").toUpperCase()}</div>
+          <div class="item-sub">${suggestion.reason || "No explanation returned."}</div>
+          ${suggestionWarnings.length ? `<div class="item-sub">Warnings: ${suggestionWarnings.join("; ")}</div>` : ""}
+        `;
+        activeSessionSuggestionsEl.appendChild(li);
+      });
+    } else {
+      activeSessionSuggestionsWrapEl.hidden = true;
+    }
+  }
 
   const insightLines = Array.isArray(summary.insights) ? [...summary.insights] : [];
   const explanationWarnings = Array.isArray(summary.explanation?.warnings) ? summary.explanation.warnings : [];
@@ -1342,8 +1371,21 @@ async function refreshFishingSession() {
       return;
     }
 
+    const context = parseContext();
+    const params = new URLSearchParams();
+    const coordinateValidationMessage = getCoordinateValidationMessage(context);
+    if (!coordinateValidationMessage) {
+      params.set("lat", String(context.lat));
+      params.set("lng", String(context.lng));
+      params.set("waterType", context.waterType);
+      params.set("accessMode", context.accessMode);
+      if (context.tideStationId) params.set("tideStationId", context.tideStationId);
+      if (context.spot) params.set("spotName", context.spot);
+      if (context.pressureTrend) params.set("pressureTrend", context.pressureTrend);
+    }
+
     try {
-      const summary = await api(`/sessions/${session.id}`, { method: "GET" });
+      const summary = await api(`/sessions/${session.id}${params.toString() ? `?${params.toString()}` : ""}`, { method: "GET" });
       renderFishingSession(summary, true);
     } catch {
       renderFishingSession(buildActiveSessionFallbackSummary(session), true);

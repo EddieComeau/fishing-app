@@ -1,4 +1,6 @@
 const { query } = require('../config/db');
+const { getAdaptiveSuggestions } = require('./sessionAdaptive.service');
+const { getUnifiedIntelligence } = require('./intelligenceOrchestrator.service');
 
 function buildSessionSummaryInsights(summary) {
   const insights = [];
@@ -121,7 +123,7 @@ async function endSession(userId, sessionId) {
   return result.rows[0];
 }
 
-async function getSessionById(userId, sessionId) {
+async function getSessionById(userId, sessionId, options = {}) {
   const sessionRes = await query(
     `SELECT id, user_id, name, location_label, species_focus, activity_level_at_start, bite_window_score_start, started_at, ended_at, status
      FROM fishing_sessions
@@ -140,6 +142,14 @@ async function getSessionById(userId, sessionId) {
     `SELECT COUNT(*)::int AS catches
      FROM catches
      WHERE user_id = $1 AND session_id = $2`,
+    [userId, sessionId]
+  );
+
+  const catchDetailRes = await query(
+    `SELECT rig_name, created_at, landed
+     FROM catches
+     WHERE user_id = $1 AND session_id = $2
+     ORDER BY created_at DESC`,
     [userId, sessionId]
   );
 
@@ -174,6 +184,7 @@ async function getSessionById(userId, sessionId) {
   const topSpecies = speciesRes.rows[0]?.species || null;
   const topRig = rigRes.rows[0]?.rig_name || null;
   const lastCatchAt = lastCatchRes.rows[0]?.last_catch_at || null;
+  const catchDetails = catchDetailRes.rows || [];
 
   const summary = {
     sessionId: session.id,
@@ -192,18 +203,44 @@ async function getSessionById(userId, sessionId) {
     biteWindowStrength: session.bite_window_score_start,
   };
 
+  let currentAdaptiveContext = null;
+  let adaptiveWarning = null;
+
+  if (session.status === 'active' && options.currentContext) {
+    try {
+      currentAdaptiveContext = await getUnifiedIntelligence(options.currentContext, {
+        userId,
+      });
+      currentAdaptiveContext.waterType = options.currentContext.waterType;
+    } catch (error) {
+      adaptiveWarning = `Adaptive suggestions are limited because live session context could not be refreshed: ${error.message || 'unknown error'}`;
+    }
+  }
+
+  const adaptive = getAdaptiveSuggestions({
+    summary,
+    catches: catchDetails,
+    currentContext: currentAdaptiveContext,
+    providerContextWarning: adaptiveWarning,
+  });
+
   return {
     ...summary,
+    adaptiveSuggestions: adaptive.suggestions,
     explanation: {
       baseReasons: [
         'Session summaries are deterministic rollups of catches attached to the current outing.',
         'Recommendation services remain separate; this slice only stores and organizes runtime context.',
       ],
-      warnings: catches === 0 ? ['No catches are attached to this session yet.'] : [],
+      warnings: [
+        ...(catches === 0 ? ['No catches are attached to this session yet.'] : []),
+        ...adaptive.warnings,
+      ],
       modifiers: [],
       metadata: {
         sessionStatus: session.status,
         sessionStartedAt: session.started_at,
+        adaptiveSuggestionsCount: adaptive.suggestions.length,
       },
     },
     insights: buildSessionSummaryInsights(summary),

@@ -46,7 +46,32 @@ async function getSessionSummaryHandler(req, res) {
       return res.status(400).json({ error: 'Valid session id is required' });
     }
 
-    const summary = await getSessionById(req.session.userId, sessionId);
+    const lat = req.query.lat === undefined ? null : Number(req.query.lat);
+    const lng = req.query.lng === undefined ? null : Number(req.query.lng);
+    const hasCoordinateParams = req.query.lat !== undefined || req.query.lng !== undefined;
+
+    if (hasCoordinateParams && (!Number.isFinite(lat) || !Number.isFinite(lng))) {
+      return res.status(400).json({ error: 'lat and lng must be valid numbers when session context coordinates are provided' });
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return res.status(400).json({ error: 'lat must be between -90 and 90, and lng must be between -180 and 180' });
+      }
+    }
+
+    const hasLiveContext = Number.isFinite(lat) && Number.isFinite(lng);
+    const summary = await getSessionById(req.session.userId, sessionId, {
+      currentContext: hasLiveContext ? {
+        lat,
+        lng,
+        waterType: req.query.waterType || 'freshwater',
+        accessMode: req.query.accessMode || 'bank',
+        tideStationId: req.query.tideStationId || null,
+        spotName: req.query.spotName || null,
+        pressureTrend: req.query.pressureTrend || null,
+      } : null,
+    });
     return res.json(summary);
   } catch (error) {
     const status = error.status || 500;
