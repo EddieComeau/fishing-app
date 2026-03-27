@@ -30,6 +30,9 @@ const saveCurrentSpotBtn = document.getElementById("save-current-spot-btn");
 const updateSavedSpotBtn = document.getElementById("update-saved-spot-btn");
 const savedSpotNameInputEl = document.getElementById("saved-spot-name");
 const savedSpotNotesInputEl = document.getElementById("saved-spot-notes");
+const savedSpotSummaryWrapEl = document.getElementById("saved-spot-summary-wrap");
+const savedSpotSummaryEl = document.getElementById("saved-spot-summary");
+const savedSpotSummaryInsightsEl = document.getElementById("saved-spot-summary-insights");
 const statusBannerEl = document.getElementById("status-banner");
 const snapshotEl = document.getElementById("snapshot");
 const scoreSummaryEl = document.getElementById("score-summary");
@@ -1063,6 +1066,9 @@ function setSavedSpotSelection(savedSpotId) {
   if (savedSpotsSelectEl) {
     savedSpotsSelectEl.value = currentLoadedSavedSpotId ? String(currentLoadedSavedSpotId) : "";
   }
+  if (!currentLoadedSavedSpotId) {
+    clearSavedSpotSummary();
+  }
 }
 
 function populateSavedSpotFieldsFromContext() {
@@ -1137,6 +1143,72 @@ function renderSavedSpots(spots) {
   }
 }
 
+function clearSavedSpotSummary() {
+  if (savedSpotSummaryWrapEl) savedSpotSummaryWrapEl.hidden = true;
+  if (savedSpotSummaryEl) savedSpotSummaryEl.innerHTML = "";
+  if (savedSpotSummaryInsightsEl) savedSpotSummaryInsightsEl.innerHTML = "";
+}
+
+function renderSavedSpotSummary(payload) {
+  if (!savedSpotSummaryWrapEl || !savedSpotSummaryEl || !savedSpotSummaryInsightsEl || !payload) return;
+
+  const summary = payload.summary || {};
+  const explanation = payload.explanation || {};
+
+  savedSpotSummaryWrapEl.hidden = false;
+  savedSpotSummaryEl.innerHTML = "";
+  savedSpotSummaryInsightsEl.innerHTML = "";
+
+  const summaryItems = [
+    ["Sessions", summary.totalSessions ?? 0],
+    ["Catches", summary.totalCatches ?? 0],
+    ["Avg Catches / Session", summary.avgCatchesPerSession ?? 0],
+    ["Top Species", summary.topSpecies || "n/a"],
+    ["Top Rig", summary.topRig || "n/a"],
+    ["Best Window", summary.bestTimeOfDay || "n/a"],
+    ["Last Fished", fmtIso(summary.lastFishedAt)],
+  ];
+
+  summaryItems.forEach(([label, value]) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    savedSpotSummaryEl.appendChild(li);
+  });
+
+  const insightLines = [
+    ...(Array.isArray(explanation.baseReasons) ? explanation.baseReasons : []),
+    ...(Array.isArray(explanation.warnings) ? explanation.warnings.map((warning) => `Warning: ${warning}`) : []),
+  ].filter(Boolean);
+
+  if (!insightLines.length) {
+    const li = document.createElement("li");
+    li.textContent = "No spot performance summary available yet.";
+    savedSpotSummaryInsightsEl.appendChild(li);
+    return;
+  }
+
+  insightLines.forEach((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    savedSpotSummaryInsightsEl.appendChild(li);
+  });
+}
+
+async function refreshSavedSpotSummary(savedSpotId = currentLoadedSavedSpotId) {
+  if (!currentUser || !Number.isInteger(savedSpotId)) {
+    clearSavedSpotSummary();
+    return;
+  }
+
+  try {
+    const payload = await api(`/spots/saved/${savedSpotId}/summary`, { method: "GET" });
+    renderSavedSpotSummary(payload);
+  } catch (error) {
+    clearSavedSpotSummary();
+    setSavedSpotsNote(error.message, "warn");
+  }
+}
+
 async function refreshSavedSpots() {
   if (!savedSpotsPanelEl || !savedSpotsAuthNoteEl) return;
 
@@ -1144,6 +1216,7 @@ async function refreshSavedSpots() {
     savedSpotsPanelEl.hidden = true;
     savedSpotsAuthNoteEl.hidden = false;
     renderSavedSpots([]);
+    clearSavedSpotSummary();
     if (savedSpotNameInputEl) savedSpotNameInputEl.value = "";
     if (savedSpotNotesInputEl) savedSpotNotesInputEl.value = "";
     setSavedSpotsNote("Login to save and reload fishing locations.");
@@ -1158,8 +1231,10 @@ async function refreshSavedSpots() {
     renderSavedSpots(payload.spots || []);
     setSavedSpotsNote("Save a trusted location context so you can reload it quickly next time.");
     populateSavedSpotFieldsFromContext();
+    await refreshSavedSpotSummary();
   } catch (error) {
     renderSavedSpots([]);
+    clearSavedSpotSummary();
     setSavedSpotsNote(error.message, "warn");
   }
 }
@@ -1953,6 +2028,7 @@ if (saveCurrentSpotBtn) {
       });
       setSavedSpotSelection(response.spot?.id || null);
       await refreshSavedSpots();
+      await refreshSavedSpotSummary(response.spot?.id || null);
       setSavedSpotsNote("Saved current location context.", "ok");
     } catch (error) {
       setSavedSpotsNote(error.message, "warn");
@@ -1980,6 +2056,7 @@ if (loadSavedSpotBtn) {
     try {
       const response = await api(`/spots/saved/${selectedId}`, { method: "GET" });
       applySavedSpotToContext(response.spot);
+      await refreshSavedSpotSummary(response.spot?.id || selectedId);
       setSavedSpotsNote(`Loaded ${response.spot?.name || "saved spot"} into the current context.`, "ok");
       showStatus("Saved spot loaded into the context form. Refresh intelligence when you are ready.", "ok");
     } catch (error) {
@@ -2020,6 +2097,7 @@ if (updateSavedSpotBtn) {
       });
       setSavedSpotSelection(response.spot?.id || selectedId);
       await refreshSavedSpots();
+      await refreshSavedSpotSummary(response.spot?.id || selectedId);
       setSavedSpotsNote("Saved spot updated.", "ok");
     } catch (error) {
       setSavedSpotsNote(error.message, "warn");
@@ -2050,6 +2128,7 @@ if (deleteSavedSpotBtn) {
         setSavedSpotSelection(null);
       }
       await refreshSavedSpots();
+      clearSavedSpotSummary();
       setSavedSpotsNote("Saved spot deleted.", "ok");
     } catch (error) {
       setSavedSpotsNote(error.message, "warn");
@@ -2099,6 +2178,13 @@ if (scoreBreakdownToggleEl) {
 if (analyticsRefreshBtn) {
   analyticsRefreshBtn.addEventListener("click", async () => {
     await refreshAnalytics();
+  });
+}
+if (savedSpotsSelectEl) {
+  savedSpotsSelectEl.addEventListener("change", async () => {
+    const selectedId = Number(savedSpotsSelectEl.value || "");
+    setSavedSpotSelection(Number.isInteger(selectedId) ? selectedId : null);
+    await refreshSavedSpotSummary(Number.isInteger(selectedId) ? selectedId : null);
   });
 }
 
