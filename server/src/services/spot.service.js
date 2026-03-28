@@ -1,4 +1,9 @@
 const { getSpotFeedback } = require('./spotFeedback.service');
+const {
+  applySpotFiltering,
+  normalizeFilterMode,
+  normalizeRankMode,
+} = require('./spotFilter.service');
 
 function normalizePressureTrend(value) {
   const normalized = String(value || '').trim().toLowerCase();
@@ -129,6 +134,8 @@ async function recommendSpots(conditions, options = {}) {
 
   const topSpot = primarySpot(spots);
   const savedSpotId = Number.isInteger(options.savedSpotId) ? options.savedSpotId : null;
+  const filterMode = normalizeFilterMode(options.filterMode);
+  const rankMode = normalizeRankMode(options.rankMode);
 
   if (topSpot && savedSpotId !== null) {
     try {
@@ -162,8 +169,14 @@ async function recommendSpots(conditions, options = {}) {
     }
   }
 
-  return {
+  const basePayload = {
     spots,
+    filtering: {
+      filterMode,
+      rankMode,
+      applied: false,
+      warnings: [],
+    },
     explanation: {
       baseReasons: Array.from(new Set(baseReasons)),
       warnings,
@@ -180,6 +193,13 @@ async function recommendSpots(conditions, options = {}) {
       },
     },
   };
+
+  return applySpotFiltering(basePayload, {
+    userId: options.userId || null,
+    savedSpotId,
+    filterMode,
+    rankMode,
+  });
 }
 
 module.exports = {

@@ -221,6 +221,17 @@
 
       <section class="card wide">
         <h2>Recommended Fishing Spots</h2>
+        <div class="inline-options">
+          <label class="check-row">
+            <input id="spot-filter-proven-only" type="checkbox" />
+            <span>Proven spots only</span>
+          </label>
+          <label class="check-row">
+            <input id="spot-rank-history-first" type="checkbox" />
+            <span>Prioritize historical performance</span>
+          </label>
+        </div>
+        <p id="spot-filter-note" class="muted">Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.</p>
         <ul id="spots-output" class="list">
           <li>Spot recommendations pending.</li>
         </ul>

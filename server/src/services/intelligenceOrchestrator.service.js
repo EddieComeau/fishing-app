@@ -164,6 +164,8 @@ async function getUnifiedIntelligence(input, options = {}) {
   const spotPayload = await recommendSpots(conditions, {
     userId: options.userId || null,
     savedSpotId: Number.isInteger(input.savedSpotId) ? input.savedSpotId : null,
+    filterMode: input.filterMode || 'default',
+    rankMode: input.rankMode || 'default',
   });
   const speciesQuery = inferSpeciesQuery(conditions, spotPayload);
   const speciesResults = await searchSpecies(speciesQuery);
@@ -219,6 +221,9 @@ async function getUnifiedIntelligence(input, options = {}) {
   const spotFeedbackModifier = (spotPayload.explanation?.modifiers || []).find(
     (modifier) => modifier?.type === 'historical_feedback'
   ) || null;
+  const spotFilteringModifier = (spotPayload.explanation?.modifiers || []).find(
+    (modifier) => modifier?.type === 'spot_filtering'
+  ) || null;
   const baseConfidence = deriveConfidence(alignedSignals);
 
   return {
@@ -230,9 +235,15 @@ async function getUnifiedIntelligence(input, options = {}) {
     explanation: {
       baseReasons,
       warnings,
-      modifiers: spotFeedbackModifier ? [spotFeedbackModifier] : [],
+      modifiers: [spotFeedbackModifier, spotFilteringModifier].filter(Boolean),
       metadata: {
         spotFeedbackAdjustment: spotFeedbackModifier?.adjustment || 'none',
+        spotFiltering: spotPayload.filtering || {
+          filterMode: input.filterMode || 'default',
+          rankMode: input.rankMode || 'default',
+          applied: false,
+          warnings: [],
+        },
         signalsAligned: alignedSignals,
         speciesQueryUsed: speciesQuery,
         selectedSpotType: topSpot?.type || 'structure_intersection',

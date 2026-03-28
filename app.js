@@ -50,6 +50,9 @@ const scoreWarningsEl = document.getElementById("score-warnings");
 const scoreReasonsEl = document.getElementById("score-reasons");
 const biteWindowEl = document.getElementById("bite-window-output");
 const spotsEl = document.getElementById("spots-output");
+const spotFilterProvenOnlyEl = document.getElementById("spot-filter-proven-only");
+const spotRankHistoryFirstEl = document.getElementById("spot-rank-history-first");
+const spotFilterNoteEl = document.getElementById("spot-filter-note");
 const intelligenceEl = document.getElementById("intelligence-output");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
@@ -120,6 +123,13 @@ function clearListWithMessage(listEl, message) {
   const li = document.createElement("li");
   li.textContent = message;
   listEl.appendChild(li);
+}
+
+function getSpotPreferenceState() {
+  return {
+    filterMode: spotFilterProvenOnlyEl?.checked ? "proven_only" : "default",
+    rankMode: spotRankHistoryFirstEl?.checked ? "history_first" : "environment_first",
+  };
 }
 
 function setLocationAssistNote(message, type = "muted") {
@@ -500,6 +510,7 @@ function renderBiteWindow(outlook, modeLabel) {
 }
 
 async function getSpotRecommendations(input) {
+  const spotPreferences = getSpotPreferenceState();
   const params = new URLSearchParams({
     lat: String(input.lat),
     lng: String(input.lng),
@@ -510,6 +521,8 @@ async function getSpotRecommendations(input) {
   if (input.spot) params.set("spotName", input.spot);
   if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
   if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
+  if (spotPreferences.filterMode !== "default") params.set("filterMode", spotPreferences.filterMode);
+  if (spotPreferences.rankMode !== "environment_first") params.set("rankMode", spotPreferences.rankMode);
 
   const response = await fetch(`${API_BASE}/spots?${params.toString()}`, {
     credentials: "include",
@@ -530,6 +543,7 @@ async function getSpotRecommendations(input) {
 }
 
 async function getUnifiedIntelligence(input) {
+  const spotPreferences = getSpotPreferenceState();
   const params = new URLSearchParams({
     lat: String(input.lat),
     lng: String(input.lng),
@@ -541,6 +555,8 @@ async function getUnifiedIntelligence(input) {
   if (input.spot) params.set("spotName", input.spot);
   if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
   if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
+  if (spotPreferences.filterMode !== "default") params.set("filterMode", spotPreferences.filterMode);
+  if (spotPreferences.rankMode !== "environment_first") params.set("rankMode", spotPreferences.rankMode);
 
   const response = await fetch(`${API_BASE}/intelligence?${params.toString()}`, {
     credentials: "include",
@@ -563,6 +579,10 @@ async function getUnifiedIntelligence(input) {
 function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
+  if (spotFilterNoteEl) {
+    spotFilterNoteEl.textContent = "Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.";
+    spotFilterNoteEl.className = "muted";
+  }
 
   if (!payload) {
     const li = document.createElement("li");
@@ -573,11 +593,30 @@ function renderSpotRecommendations(payload, modeLabel) {
 
   const spots = Array.isArray(payload.spots) ? payload.spots : [];
   const warnings = Array.isArray(payload.explanation?.warnings) ? payload.explanation.warnings : [];
+  const filtering = payload.filtering || null;
+  const filteringModifier = Array.isArray(payload.explanation?.modifiers)
+    ? payload.explanation.modifiers.find((modifier) => modifier?.type === "spot_filtering")
+    : null;
+
+  if (spotFilterNoteEl && filtering) {
+    const appliedLabel = filtering.applied
+      ? `History filter active: ${filtering.filterMode.replace(/_/g, " ")} / ${filtering.rankMode.replace(/_/g, " ")}.`
+      : filtering.filterMode !== "default" || filtering.rankMode !== "default"
+        ? `History filter requested: ${filtering.filterMode.replace(/_/g, " ")} / ${filtering.rankMode.replace(/_/g, " ")}.`
+        : "Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.";
+    spotFilterNoteEl.textContent = filteringModifier?.reason || appliedLabel;
+    spotFilterNoteEl.className = filtering.applied ? "status ok" : warnings.length ? "status warn" : "muted";
+  }
 
   if (!spots.length) {
     const li = document.createElement("li");
     li.textContent = "No spot recommendations available for this context.";
     spotsEl.appendChild(li);
+    warnings.forEach((warning) => {
+      const warningLi = document.createElement("li");
+      warningLi.innerHTML = `<div class="item-sub"><strong>Warning:</strong> ${warning}</div>`;
+      spotsEl.appendChild(warningLi);
+    });
     return;
   }
 
@@ -587,6 +626,7 @@ function renderSpotRecommendations(payload, modeLabel) {
       ? `Historical confidence: ${String(feedback.confidenceLevel || "low").toUpperCase()} from ${feedback.sampleSize ?? 0} linked sessions${feedback.adjustment && feedback.adjustment !== "none" ? ` (${feedback.adjustment.replace(/_/g, " ")})` : ""}.`
       : "";
     const feedbackWarnings = Array.isArray(feedback?.warnings) ? feedback.warnings : [];
+    const filterBadge = filtering?.applied ? `<div class="item-sub"><strong>Filter mode:</strong> ${String(filtering.filterMode || "default").replace(/_/g, " ")} / ${String(filtering.rankMode || "default").replace(/_/g, " ")}</div>` : "";
     const li = document.createElement("li");
     li.innerHTML = `
       <div class="item-top">
@@ -595,6 +635,7 @@ function renderSpotRecommendations(payload, modeLabel) {
       </div>
       <div class="item-sub">${spot.reason || "No spot explanation returned."}</div>
       ${feedbackLine ? `<div class="item-sub">${feedbackLine}</div>` : ""}
+      ${filterBadge}
       ${feedbackWarnings.length ? `<div class="item-sub"><strong>History warning:</strong> ${feedbackWarnings.join(" ")}</div>` : ""}
     `;
     spotsEl.appendChild(li);
@@ -2275,11 +2316,23 @@ if (analyticsRefreshBtn) {
     await refreshAnalytics();
   });
 }
-if (savedSpotsSelectEl) {
+  if (savedSpotsSelectEl) {
   savedSpotsSelectEl.addEventListener("change", async () => {
     const selectedId = Number(savedSpotsSelectEl.value || "");
     setSavedSpotSelection(Number.isInteger(selectedId) ? selectedId : null);
     await refreshSavedSpotSummary(Number.isInteger(selectedId) ? selectedId : null);
+  });
+}
+
+if (spotFilterProvenOnlyEl) {
+  spotFilterProvenOnlyEl.addEventListener("change", () => {
+    refreshIntelligence();
+  });
+}
+
+if (spotRankHistoryFirstEl) {
+  spotRankHistoryFirstEl.addEventListener("change", () => {
+    refreshIntelligence();
   });
 }
 
