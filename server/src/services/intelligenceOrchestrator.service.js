@@ -78,6 +78,30 @@ function deriveConfidence(signalsAligned) {
   return 'low';
 }
 
+function confidenceToRank(confidence) {
+  const normalized = String(confidence || '').toLowerCase();
+  if (normalized === 'high') return 3;
+  if (normalized === 'medium') return 2;
+  return 1;
+}
+
+function rankToConfidence(rank) {
+  if (rank >= 3) return 'high';
+  if (rank >= 2) return 'medium';
+  return 'low';
+}
+
+function applyConfidenceAdjustment(baseConfidence, adjustment) {
+  const baseRank = confidenceToRank(baseConfidence);
+  let delta = 0;
+
+  if (adjustment === 'slight_up') delta = 1;
+  if (adjustment === 'moderate_up') delta = 2;
+  if (adjustment === 'slight_down') delta = -1;
+
+  return rankToConfidence(Math.max(1, Math.min(3, baseRank + delta)));
+}
+
 function deriveApproach(topSpot, fightPayload) {
   const spotType = String(topSpot?.type || '');
   const pressurePlan = String(fightPayload?.pressurePlan || 'moderate').toLowerCase();
@@ -137,7 +161,10 @@ async function getUnifiedIntelligence(input, options = {}) {
     waterType: input.waterType,
     observedAt: conditions.observedAt || null,
   });
-  const spotPayload = recommendSpots(conditions);
+  const spotPayload = await recommendSpots(conditions, {
+    userId: options.userId || null,
+    savedSpotId: Number.isInteger(input.savedSpotId) ? input.savedSpotId : null,
+  });
   const speciesQuery = inferSpeciesQuery(conditions, spotPayload);
   const speciesResults = await searchSpecies(speciesQuery);
   const targetSpecies = chooseTargetSpecies(speciesResults, speciesQuery);
@@ -189,17 +216,23 @@ async function getUnifiedIntelligence(input, options = {}) {
     ...(rigPayload?.reasons || []).slice(0, 1),
   ]).slice(0, 5);
 
+  const spotFeedbackModifier = (spotPayload.explanation?.modifiers || []).find(
+    (modifier) => modifier?.type === 'historical_feedback'
+  ) || null;
+  const baseConfidence = deriveConfidence(alignedSignals);
+
   return {
     targetSpecies: targetSpecies?.commonName || targetSpecies?.scientificName || 'No target selected',
     recommendedSpot: topSpot?.label || 'Structure intersections and transition edges',
     recommendedRig: rigPayload?.rigName || 'No rig selected',
     recommendedApproach: deriveApproach(topSpot, fightPayload),
-    confidence: deriveConfidence(alignedSignals),
+    confidence: applyConfidenceAdjustment(baseConfidence, spotFeedbackModifier?.adjustment || 'none'),
     explanation: {
       baseReasons,
       warnings,
-      modifiers: [],
+      modifiers: spotFeedbackModifier ? [spotFeedbackModifier] : [],
       metadata: {
+        spotFeedbackAdjustment: spotFeedbackModifier?.adjustment || 'none',
         signalsAligned: alignedSignals,
         speciesQueryUsed: speciesQuery,
         selectedSpotType: topSpot?.type || 'structure_intersection',

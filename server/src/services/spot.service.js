@@ -1,3 +1,5 @@
+const { getSpotFeedback } = require('./spotFeedback.service');
+
 function normalizePressureTrend(value) {
   const normalized = String(value || '').trim().toLowerCase();
   if (normalized === 'dropping' || normalized === 'rising' || normalized === 'steady') {
@@ -25,10 +27,40 @@ function buildSpot(type, label, confidence, reason) {
   };
 }
 
-function recommendSpots(conditions) {
+function primarySpot(spots) {
+  const list = Array.isArray(spots) ? spots : [];
+  return list.find((spot) => spot.type !== 'structure_intersection') || list[0] || null;
+}
+
+function confidenceToRank(confidence) {
+  const normalized = String(confidence || '').toLowerCase();
+  if (normalized === 'high') return 3;
+  if (normalized === 'medium') return 2;
+  return 1;
+}
+
+function rankToConfidence(rank) {
+  if (rank >= 3) return 'high';
+  if (rank >= 2) return 'medium';
+  return 'low';
+}
+
+function applyConfidenceAdjustment(baseConfidence, adjustment) {
+  const baseRank = confidenceToRank(baseConfidence);
+  let delta = 0;
+
+  if (adjustment === 'slight_up') delta = 1;
+  if (adjustment === 'moderate_up') delta = 2;
+  if (adjustment === 'slight_down') delta = -1;
+
+  return rankToConfidence(Math.max(1, Math.min(3, baseRank + delta)));
+}
+
+async function recommendSpots(conditions, options = {}) {
   const spots = [];
   const baseReasons = [];
   const warnings = [];
+  const modifiers = [];
   const waterType = String(conditions?.spot?.waterType || '').toLowerCase();
   const tideStage = String(conditions?.tide?.stage || 'n/a').toLowerCase();
   const windMph = Number(conditions?.weather?.windMph);
@@ -95,13 +127,49 @@ function recommendSpots(conditions) {
   ));
   baseReasons.push('Structure remains the baseline fish-positioning factor.');
 
+  const topSpot = primarySpot(spots);
+  const savedSpotId = Number.isInteger(options.savedSpotId) ? options.savedSpotId : null;
+
+  if (topSpot && savedSpotId !== null) {
+    try {
+      const feedback = await getSpotFeedback({
+        userId: options.userId || null,
+        savedSpotId,
+      });
+
+      topSpot.baseConfidence = topSpot.confidence;
+      topSpot.historicalFeedback = {
+        adjustment: feedback.confidenceAdjustment,
+        sampleSize: feedback.metadata.sampleSize,
+        confidenceLevel: feedback.metadata.confidenceLevel,
+        signals: feedback.signals,
+        warnings: feedback.warnings,
+      };
+      topSpot.confidence = applyConfidenceAdjustment(topSpot.confidence, feedback.confidenceAdjustment);
+
+      modifiers.push({
+        type: 'historical_feedback',
+        impact: 'confidence_adjustment',
+        adjustment: feedback.confidenceAdjustment,
+        confidenceLevel: feedback.metadata.confidenceLevel,
+        sampleSize: feedback.metadata.sampleSize,
+      });
+
+      feedback.signals.forEach((signal) => baseReasons.push(signal));
+      feedback.warnings.forEach((warning) => warnings.push(warning));
+    } catch (error) {
+      warnings.push('Historical spot feedback was unavailable; base spot confidence was kept unchanged.');
+    }
+  }
+
   return {
     spots,
     explanation: {
       baseReasons: Array.from(new Set(baseReasons)),
       warnings,
-      modifiers: [],
+      modifiers,
       metadata: {
+        historicalFeedback: topSpot?.historicalFeedback || null,
         signalsEvaluated: {
           tide: tidalWater && tideTimingAvailable,
           wind: windAvailable,

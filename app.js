@@ -509,6 +509,7 @@ async function getSpotRecommendations(input) {
   if (input.tideStationId) params.set("tideStationId", input.tideStationId);
   if (input.spot) params.set("spotName", input.spot);
   if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+  if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
 
   const response = await fetch(`${API_BASE}/spots?${params.toString()}`, {
     credentials: "include",
@@ -539,6 +540,7 @@ async function getUnifiedIntelligence(input) {
   if (input.tideStationId) params.set("tideStationId", input.tideStationId);
   if (input.spot) params.set("spotName", input.spot);
   if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+  if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
 
   const response = await fetch(`${API_BASE}/intelligence?${params.toString()}`, {
     credentials: "include",
@@ -580,6 +582,11 @@ function renderSpotRecommendations(payload, modeLabel) {
   }
 
   spots.forEach((spot) => {
+    const feedback = spot.historicalFeedback || null;
+    const feedbackLine = feedback
+      ? `Historical confidence: ${String(feedback.confidenceLevel || "low").toUpperCase()} from ${feedback.sampleSize ?? 0} linked sessions${feedback.adjustment && feedback.adjustment !== "none" ? ` (${feedback.adjustment.replace(/_/g, " ")})` : ""}.`
+      : "";
+    const feedbackWarnings = Array.isArray(feedback?.warnings) ? feedback.warnings : [];
     const li = document.createElement("li");
     li.innerHTML = `
       <div class="item-top">
@@ -587,6 +594,8 @@ function renderSpotRecommendations(payload, modeLabel) {
         <span class="badge">${String(spot.confidence || "medium").toUpperCase()}</span>
       </div>
       <div class="item-sub">${spot.reason || "No spot explanation returned."}</div>
+      ${feedbackLine ? `<div class="item-sub">${feedbackLine}</div>` : ""}
+      ${feedbackWarnings.length ? `<div class="item-sub"><strong>History warning:</strong> ${feedbackWarnings.join(" ")}</div>` : ""}
     `;
     spotsEl.appendChild(li);
   });
