@@ -1239,6 +1239,7 @@ function renderSavedSpotSummary(payload) {
 
   const summary = payload.summary || {};
   const explanation = payload.explanation || {};
+  const insights = payload.insights || {};
 
   savedSpotSummaryWrapEl.hidden = false;
   savedSpotSummaryEl.innerHTML = "";
@@ -1261,22 +1262,38 @@ function renderSavedSpotSummary(payload) {
   });
 
   const insightLines = [
+    insights.bestTime ? `Best Time: ${insights.bestTime}` : null,
+    insights.bestRig ? `Best Rig: ${insights.bestRig}` : null,
+    insights.productivity ? `Productivity: ${insights.productivity}` : null,
+    insights.patternSummary ? `Pattern: ${insights.patternSummary}` : null,
+    ...(Array.isArray(insights.warnings) ? insights.warnings.map((warning) => `Warning: ${warning}`) : []),
+  ].filter(Boolean);
+
+  const fallbackExplanationLines = [
     ...(Array.isArray(explanation.baseReasons) ? explanation.baseReasons : []),
     ...(Array.isArray(explanation.warnings) ? explanation.warnings.map((warning) => `Warning: ${warning}`) : []),
   ].filter(Boolean);
 
   if (!insightLines.length) {
-    const li = document.createElement("li");
-    li.textContent = "No spot performance summary available yet.";
-    savedSpotSummaryInsightsEl.appendChild(li);
-    return;
-  }
+    if (!fallbackExplanationLines.length) {
+      const li = document.createElement("li");
+      li.textContent = "No spot performance summary available yet.";
+      savedSpotSummaryInsightsEl.appendChild(li);
+      return;
+    }
 
-  insightLines.forEach((line) => {
-    const li = document.createElement("li");
-    li.textContent = line;
-    savedSpotSummaryInsightsEl.appendChild(li);
-  });
+    fallbackExplanationLines.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      savedSpotSummaryInsightsEl.appendChild(li);
+    });
+  } else {
+    insightLines.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      savedSpotSummaryInsightsEl.appendChild(li);
+    });
+  }
 
   setSavedSpotShareNote("Create a read-only public link if you want to share this saved spot summary.");
 }

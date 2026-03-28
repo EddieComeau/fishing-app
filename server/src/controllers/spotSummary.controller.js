@@ -1,4 +1,5 @@
 const { getSavedSpotSummary } = require('../services/spotSummary.service');
+const { getSpotInsights } = require('../services/spotInsight.service');
 
 function parseSavedSpotId(value) {
   const id = Number(value);
@@ -13,7 +14,31 @@ async function getSavedSpotSummaryHandler(req, res) {
     }
 
     const summary = await getSavedSpotSummary(req.session.userId, savedSpotId);
-    return res.json(summary);
+    const insightPayload = await getSpotInsights({
+      userId: req.session.userId,
+      savedSpotId,
+      summaryPayload: summary,
+    });
+
+    return res.json({
+      ...summary,
+      insights: insightPayload.insights,
+      explanation: {
+        baseReasons: Array.from(new Set([
+          ...(summary.explanation?.baseReasons || []),
+          ...(insightPayload.explanation?.baseReasons || []),
+        ])),
+        warnings: Array.from(new Set([
+          ...(summary.explanation?.warnings || []),
+          ...(insightPayload.explanation?.warnings || []),
+        ])),
+        modifiers: [],
+        metadata: {
+          ...(summary.explanation?.metadata || {}),
+          spotInsights: insightPayload.explanation?.metadata || {},
+        },
+      },
+    });
   } catch (error) {
     const status = error.status || 500;
     return res.status(status).json({ error: error.message || 'Failed to fetch saved spot summary' });

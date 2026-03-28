@@ -22,6 +22,8 @@ test('saved spot summary shows deterministic performance data and low-sample war
   await expect(page.locator('#saved-spot-summary-wrap')).toBeVisible();
   await expect(page.locator('#saved-spot-summary')).toContainText('Sessions');
   await expect(page.locator('#saved-spot-summary')).toContainText('0');
+  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Best Time: Not enough data to determine best time.');
+  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Warning: Limited data - insights may not be reliable yet.');
 
   await page.locator('#session-start-form input[name="name"]').fill('Summary Trip');
   await page.locator('#session-start-form input[name="speciesFocus"]').fill('Bass');
@@ -42,5 +44,7 @@ test('saved spot summary shows deterministic performance data and low-sample war
   await expect(page.locator('#saved-spot-summary')).toContainText('1');
   await expect(page.locator('#saved-spot-summary')).toContainText('Bluegill');
   await expect(page.locator('#saved-spot-summary')).toContainText('Inline spinner');
-  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Limited data for this spot');
+  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Best Rig: Inline spinner consistently performs best at this spot.');
+  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Productivity: This spot produces occasional results.');
+  await expect(page.locator('#saved-spot-summary-insights')).toContainText('Warning: Limited data - insights may not be reliable yet.');
 });
