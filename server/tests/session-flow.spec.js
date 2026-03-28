@@ -33,7 +33,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await page.locator('#session-start-form button[type="submit"]').click();
 
   await expect(page.locator('#active-session-card')).toBeVisible();
-  await expect(page.locator('#active-session-name')).not.toHaveText('');
+  await expect(page.locator('#active-session-meta')).toContainText('active');
 
   await page.locator('#species-input').fill('Largemouth Bass');
   await page.locator('input[name="bait"]').fill('Worm');

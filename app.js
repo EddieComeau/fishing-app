@@ -28,8 +28,10 @@ const loadSavedSpotBtn = document.getElementById("load-saved-spot-btn");
 const deleteSavedSpotBtn = document.getElementById("delete-saved-spot-btn");
 const saveCurrentSpotBtn = document.getElementById("save-current-spot-btn");
 const updateSavedSpotBtn = document.getElementById("update-saved-spot-btn");
+const shareSavedSpotBtn = document.getElementById("share-saved-spot-btn");
 const savedSpotNameInputEl = document.getElementById("saved-spot-name");
 const savedSpotNotesInputEl = document.getElementById("saved-spot-notes");
+const savedSpotShareNoteEl = document.getElementById("saved-spot-share-note");
 const savedSpotSummaryWrapEl = document.getElementById("saved-spot-summary-wrap");
 const savedSpotSummaryEl = document.getElementById("saved-spot-summary");
 const savedSpotSummaryInsightsEl = document.getElementById("saved-spot-summary-insights");
@@ -86,6 +88,8 @@ const sessionHistoryDetailEl = document.getElementById("session-history-detail")
 const sessionHistoryDetailNameEl = document.getElementById("session-history-detail-name");
 const sessionHistoryDetailMetaEl = document.getElementById("session-history-detail-meta");
 const sessionHistoryDetailSummaryEl = document.getElementById("session-history-detail-summary");
+const shareSessionBtn = document.getElementById("share-session-btn");
+const sessionShareNoteEl = document.getElementById("session-share-note");
 const sessionHistoryDetailSuggestionsWrapEl = document.getElementById("session-history-detail-suggestions-wrap");
 const sessionHistoryDetailSuggestionsEl = document.getElementById("session-history-detail-suggestions");
 const sessionHistoryDetailInsightsEl = document.getElementById("session-history-detail-insights");
@@ -104,8 +108,11 @@ let currentIntelligenceSnapshot = null;
 let currentSavedSpots = [];
 let currentLoadedSavedSpotId = null;
 let currentSessionHistory = [];
+let currentSessionHistoryDetail = null;
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
+
+const PUBLIC_SHARE_BASE = API_BASE.replace(/\/api$/, "");
 
 function clearListWithMessage(listEl, message) {
   if (!listEl) return;
@@ -125,6 +132,18 @@ function setSavedSpotsNote(message, type = "muted") {
   if (!savedSpotsNoteEl) return;
   savedSpotsNoteEl.textContent = message;
   savedSpotsNoteEl.className = type === "warn" ? "status warn" : type === "ok" ? "status ok" : "muted";
+}
+
+function setSavedSpotShareNote(message, type = "muted") {
+  if (!savedSpotShareNoteEl) return;
+  savedSpotShareNoteEl.textContent = message;
+  savedSpotShareNoteEl.className = type === "warn" ? "status warn" : type === "ok" ? "status ok" : "muted";
+}
+
+function setSessionShareNote(message, type = "muted") {
+  if (!sessionShareNoteEl) return;
+  sessionShareNoteEl.textContent = message;
+  sessionShareNoteEl.className = type === "warn" ? "status warn" : type === "ok" ? "status ok" : "muted";
 }
 
 function showStatus(message, type) {
@@ -189,6 +208,17 @@ async function api(path, options = {}) {
   }
 
   return data;
+}
+
+async function copyText(text) {
+  if (!navigator.clipboard?.writeText) return false;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function classifyRegime(conditions) {
@@ -904,10 +934,12 @@ function buildActiveSessionFallbackSummary(session) {
 
 function clearSessionHistoryDetail() {
   if (!sessionHistoryDetailEl) return;
+  currentSessionHistoryDetail = null;
   sessionHistoryDetailEl.hidden = true;
   if (sessionHistoryDetailNameEl) sessionHistoryDetailNameEl.textContent = "";
   if (sessionHistoryDetailMetaEl) sessionHistoryDetailMetaEl.textContent = "";
   if (sessionHistoryDetailSummaryEl) sessionHistoryDetailSummaryEl.innerHTML = "";
+  setSessionShareNote("");
   if (sessionHistoryDetailSuggestionsWrapEl) sessionHistoryDetailSuggestionsWrapEl.hidden = true;
   if (sessionHistoryDetailSuggestionsEl) sessionHistoryDetailSuggestionsEl.innerHTML = "";
   if (sessionHistoryDetailInsightsEl) sessionHistoryDetailInsightsEl.innerHTML = "";
@@ -916,6 +948,7 @@ function clearSessionHistoryDetail() {
 function renderSessionHistoryDetail(summary) {
   if (!summary || !sessionHistoryDetailEl) return;
 
+  currentSessionHistoryDetail = summary;
   sessionHistoryDetailEl.hidden = false;
   sessionHistoryDetailNameEl.textContent = summary.name || "Trip Detail";
   sessionHistoryDetailMetaEl.textContent = `${summary.locationLabel || summary.savedSpotName || "Unknown location"} | ${summary.sessionDuration || "n/a"} | ${summary.status || "ended"}`;
@@ -925,6 +958,7 @@ function renderSessionHistoryDetail(summary) {
   );
   renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
   renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insights available yet.");
+  setSessionShareNote("Create a read-only public link if you want to share this completed trip.");
 }
 
 async function loadSessionHistoryDetail(sessionId) {
@@ -1068,6 +1102,7 @@ function setSavedSpotSelection(savedSpotId) {
   }
   if (!currentLoadedSavedSpotId) {
     clearSavedSpotSummary();
+    setSavedSpotShareNote("");
   }
 }
 
@@ -1192,6 +1227,8 @@ function renderSavedSpotSummary(payload) {
     li.textContent = line;
     savedSpotSummaryInsightsEl.appendChild(li);
   });
+
+  setSavedSpotShareNote("Create a read-only public link if you want to share this saved spot summary.");
 }
 
 async function refreshSavedSpotSummary(savedSpotId = currentLoadedSavedSpotId) {
@@ -1217,6 +1254,7 @@ async function refreshSavedSpots() {
     savedSpotsAuthNoteEl.hidden = false;
     renderSavedSpots([]);
     clearSavedSpotSummary();
+    setSavedSpotShareNote("");
     if (savedSpotNameInputEl) savedSpotNameInputEl.value = "";
     if (savedSpotNotesInputEl) savedSpotNotesInputEl.value = "";
     setSavedSpotsNote("Login to save and reload fishing locations.");
@@ -1236,6 +1274,48 @@ async function refreshSavedSpots() {
     renderSavedSpots([]);
     clearSavedSpotSummary();
     setSavedSpotsNote(error.message, "warn");
+  }
+}
+
+async function createSpotShareLink() {
+  if (!currentUser || !Number.isInteger(currentLoadedSavedSpotId)) {
+    setSavedSpotShareNote("Load a saved spot before sharing it.", "warn");
+    return;
+  }
+
+  const restoreButton = setButtonBusy(shareSavedSpotBtn, "Sharing...");
+
+  try {
+    const payload = await api(`/share/spot/${currentLoadedSavedSpotId}`, { method: "POST" });
+    const publicUrl = `${PUBLIC_SHARE_BASE}${payload.url}`;
+    const copied = await copyText(publicUrl);
+    setSavedSpotShareNote(copied ? `Share link copied: ${publicUrl}` : `Share link ready: ${publicUrl}`, "ok");
+  } catch (error) {
+    setSavedSpotShareNote(error.message || "Could not create a share link.", "warn");
+  } finally {
+    restoreButton();
+  }
+}
+
+async function createSessionShareLink() {
+  const sessionId = Number(currentSessionHistoryDetail?.sessionId);
+
+  if (!currentUser || !Number.isInteger(sessionId)) {
+    setSessionShareNote("Open a completed trip before sharing it.", "warn");
+    return;
+  }
+
+  const restoreButton = setButtonBusy(shareSessionBtn, "Sharing...");
+
+  try {
+    const payload = await api(`/share/session/${sessionId}`, { method: "POST" });
+    const publicUrl = `${PUBLIC_SHARE_BASE}${payload.url}`;
+    const copied = await copyText(publicUrl);
+    setSessionShareNote(copied ? `Share link copied: ${publicUrl}` : `Share link ready: ${publicUrl}`, "ok");
+  } catch (error) {
+    setSessionShareNote(error.message || "Could not create a share link.", "warn");
+  } finally {
+    restoreButton();
   }
 }
 
@@ -2138,6 +2218,12 @@ if (deleteSavedSpotBtn) {
   });
 }
 
+if (shareSavedSpotBtn) {
+  shareSavedSpotBtn.addEventListener("click", async () => {
+    await createSpotShareLink();
+  });
+}
+
 waterTypeEl.addEventListener("change", updateTideStationVisibility);
 waterTypeEl.addEventListener("change", () => {
   setSavedSpotSelection(null);
@@ -2185,6 +2271,12 @@ if (savedSpotsSelectEl) {
     const selectedId = Number(savedSpotsSelectEl.value || "");
     setSavedSpotSelection(Number.isInteger(selectedId) ? selectedId : null);
     await refreshSavedSpotSummary(Number.isInteger(selectedId) ? selectedId : null);
+  });
+}
+
+if (shareSessionBtn) {
+  shareSessionBtn.addEventListener("click", async () => {
+    await createSessionShareLink();
   });
 }
 

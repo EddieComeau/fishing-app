@@ -12,6 +12,8 @@ const scoreRoutes = require('./routes/score.routes');
 const biteWindowRoutes = require('./routes/biteWindow.routes');
 const spotRoutes = require('./routes/spot.routes');
 const savedSpotsRoutes = require('./routes/savedSpots.routes');
+const shareRoutes = require('./routes/share.routes');
+const publicShareRoutes = require('./routes/publicShare.routes');
 const intelligenceRoutes = require('./routes/intelligence.routes');
 const rigRoutes = require('./routes/rig.routes');
 const fightRoutes = require('./routes/fight.routes');
@@ -38,10 +40,12 @@ app.use('/api/score', scoreRoutes);
 app.use('/api/bite-window', biteWindowRoutes);
 app.use('/api/spots/saved', savedSpotsRoutes);
 app.use('/api/spots', spotRoutes);
+app.use('/api/share', shareRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/rig', rigRoutes);
 app.use('/api/fight', fightRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/share', publicShareRoutes);
 
 const PORT = process.env.PORT || 3001;
 

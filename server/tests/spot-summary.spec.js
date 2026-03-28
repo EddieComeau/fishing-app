@@ -32,6 +32,7 @@ test('saved spot summary shows deterministic performance data and low-sample war
   await page.locator('input[name="bait"]').fill('Spinner');
   await page.locator('input[name="rigName"]').fill('Inline spinner');
   await page.locator('#catch-form button[type="submit"]').click();
+  await expect(page.locator('#catch-list')).toContainText('Bluegill');
   await page.locator('#end-session-btn').click();
 
   await page.locator('#saved-spots-select').selectOption({ label: 'Summary Spot (freshwater)' });

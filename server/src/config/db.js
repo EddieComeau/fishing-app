@@ -151,6 +151,21 @@ async function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_email_events_email_created_at
     ON email_events(email, created_at DESC);
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS shared_links (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      target_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_links_user_type_target
+    ON shared_links(user_id, type, target_id);
+  `);
 }
 
 module.exports = {
