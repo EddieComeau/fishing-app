@@ -24,6 +24,9 @@ test('saved spot summary shows deterministic performance data and low-sample war
   await expect(page.locator('#saved-spot-summary')).toContainText('0');
   await expect(page.locator('#saved-spot-summary-insights')).toContainText('Best Time: Not enough data to determine best time.');
   await expect(page.locator('#saved-spot-summary-insights')).toContainText('Warning: Limited data - insights may not be reliable yet.');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Recommended Time: No strong time pattern - fish during active bite windows.');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Confidence: LOW');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Warning: Limited data - plan confidence is low.');
 
   await page.locator('#session-start-form input[name="name"]').fill('Summary Trip');
   await page.locator('#session-start-form input[name="speciesFocus"]').fill('Bass');
@@ -47,4 +50,7 @@ test('saved spot summary shows deterministic performance data and low-sample war
   await expect(page.locator('#saved-spot-summary-insights')).toContainText('Best Rig: Inline spinner consistently performs best at this spot.');
   await expect(page.locator('#saved-spot-summary-insights')).toContainText('Productivity: This spot produces occasional results.');
   await expect(page.locator('#saved-spot-summary-insights')).toContainText('Warning: Limited data - insights may not be reliable yet.');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Recommended Rig: Start with Inline spinner.');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Strategy: Use standard techniques - limited data is available for this spot.');
+  await expect(page.locator('#saved-spot-plan')).toContainText('Confidence: LOW');
 });

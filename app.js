@@ -35,6 +35,7 @@ const savedSpotShareNoteEl = document.getElementById("saved-spot-share-note");
 const savedSpotSummaryWrapEl = document.getElementById("saved-spot-summary-wrap");
 const savedSpotSummaryEl = document.getElementById("saved-spot-summary");
 const savedSpotSummaryInsightsEl = document.getElementById("saved-spot-summary-insights");
+const savedSpotPlanEl = document.getElementById("saved-spot-plan");
 const statusBannerEl = document.getElementById("status-banner");
 const snapshotEl = document.getElementById("snapshot");
 const scoreSummaryEl = document.getElementById("score-summary");
@@ -1232,18 +1233,22 @@ function clearSavedSpotSummary() {
   if (savedSpotSummaryWrapEl) savedSpotSummaryWrapEl.hidden = true;
   if (savedSpotSummaryEl) savedSpotSummaryEl.innerHTML = "";
   if (savedSpotSummaryInsightsEl) savedSpotSummaryInsightsEl.innerHTML = "";
+  if (savedSpotPlanEl) savedSpotPlanEl.innerHTML = "";
 }
 
-function renderSavedSpotSummary(payload) {
-  if (!savedSpotSummaryWrapEl || !savedSpotSummaryEl || !savedSpotSummaryInsightsEl || !payload) return;
+function renderSavedSpotSummary(payload, planPayload = null) {
+  if (!savedSpotSummaryWrapEl || !savedSpotSummaryEl || !savedSpotSummaryInsightsEl || !savedSpotPlanEl || !payload) return;
 
   const summary = payload.summary || {};
   const explanation = payload.explanation || {};
   const insights = payload.insights || {};
+  const plan = planPayload?.plan || {};
+  const planExplanation = planPayload?.explanation || {};
 
   savedSpotSummaryWrapEl.hidden = false;
   savedSpotSummaryEl.innerHTML = "";
   savedSpotSummaryInsightsEl.innerHTML = "";
+  savedSpotPlanEl.innerHTML = "";
 
   const summaryItems = [
     ["Sessions", summary.totalSessions ?? 0],
@@ -1295,6 +1300,26 @@ function renderSavedSpotSummary(payload) {
     });
   }
 
+  const planLines = [
+    plan.recommendedTime ? `Recommended Time: ${plan.recommendedTime}` : null,
+    plan.recommendedRig ? `Recommended Rig: ${plan.recommendedRig}` : null,
+    plan.strategy ? `Strategy: ${plan.strategy}` : null,
+    plan.confidence ? `Confidence: ${String(plan.confidence).toUpperCase()}` : null,
+    ...(Array.isArray(planExplanation.warnings) ? planExplanation.warnings.map((warning) => `Warning: ${warning}`) : []),
+  ].filter(Boolean);
+
+  if (!planLines.length) {
+    const li = document.createElement("li");
+    li.textContent = "No saved-spot plan is available yet.";
+    savedSpotPlanEl.appendChild(li);
+  } else {
+    planLines.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      savedSpotPlanEl.appendChild(li);
+    });
+  }
+
   setSavedSpotShareNote("Create a read-only public link if you want to share this saved spot summary.");
 }
 
@@ -1305,8 +1330,11 @@ async function refreshSavedSpotSummary(savedSpotId = currentLoadedSavedSpotId) {
   }
 
   try {
-    const payload = await api(`/spots/saved/${savedSpotId}/summary`, { method: "GET" });
-    renderSavedSpotSummary(payload);
+    const [summaryPayload, planPayload] = await Promise.all([
+      api(`/spots/saved/${savedSpotId}/summary`, { method: "GET" }),
+      api(`/spots/saved/${savedSpotId}/plan`, { method: "GET" }),
+    ]);
+    renderSavedSpotSummary(summaryPayload, planPayload);
   } catch (error) {
     clearSavedSpotSummary();
     setSavedSpotsNote(error.message, "warn");
