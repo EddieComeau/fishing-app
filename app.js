@@ -55,6 +55,7 @@ const spotFilterProvenOnlyEl = document.getElementById("spot-filter-proven-only"
 const spotRankHistoryFirstEl = document.getElementById("spot-rank-history-first");
 const spotFilterNoteEl = document.getElementById("spot-filter-note");
 const intelligenceEl = document.getElementById("intelligence-output");
+const decisionEl = document.getElementById("decision-output");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const fightEl = document.getElementById("fight-output");
@@ -577,6 +578,40 @@ async function getUnifiedIntelligence(input) {
   return response.json();
 }
 
+async function getTripDecision(input) {
+  const spotPreferences = getSpotPreferenceState();
+  const params = new URLSearchParams({
+    lat: String(input.lat),
+    lng: String(input.lng),
+    waterType: input.waterType,
+    accessMode: input.accessMode,
+  });
+
+  if (input.tideStationId) params.set("tideStationId", input.tideStationId);
+  if (input.spot) params.set("spotName", input.spot);
+  if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+  if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
+  if (spotPreferences.filterMode !== "default") params.set("filterMode", spotPreferences.filterMode);
+  if (spotPreferences.rankMode !== "environment_first") params.set("rankMode", spotPreferences.rankMode);
+
+  const response = await fetch(`${API_BASE}/decision?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Decision endpoint failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
@@ -674,6 +709,31 @@ function renderUnifiedIntelligence(payload, modeLabel) {
     <p><strong>Why:</strong> ${escapeHtml(reasons.join(" ") || "No unified explanation returned.")}</p>
     <p><strong>Aligned signals:</strong> ${escapeHtml(signalsAligned.join(", ") || "None clearly aligned")}</p>
     ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+  `;
+}
+
+function renderTripDecision(payload, modeLabel) {
+  if (!decisionEl) return;
+
+  if (!payload) {
+    decisionEl.innerHTML = `<p class="muted">Trip decision unavailable in ${modeLabel}.</p>`;
+    return;
+  }
+
+  const summaryWarnings = Array.isArray(payload.summary?.warnings) ? payload.summary.warnings : [];
+  const supportingSignals = Array.isArray(payload.summary?.supportingSignals) ? payload.summary.supportingSignals : [];
+  const missingSignals = Array.isArray(payload.explanation?.signalsMissing) ? payload.explanation.signalsMissing : [];
+
+  decisionEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(payload.decision?.confidence)}">${String(payload.decision?.confidence || "low").toUpperCase()}</span>
+      <strong>${escapeHtml(String(payload.decision?.goFishing || "conditional").toUpperCase())}</strong>
+    </div>
+    <p><strong>Primary reason:</strong> ${escapeHtml(payload.summary?.primaryReason || "No decision summary returned.")}</p>
+    <p><strong>Focus:</strong> Spot ${escapeHtml(payload.recommendedFocus?.spot || "n/a")} | Species ${escapeHtml(payload.recommendedFocus?.species || "n/a")} | Rig ${escapeHtml(payload.recommendedFocus?.rig || "n/a")}</p>
+    <p><strong>Signals:</strong> ${escapeHtml(supportingSignals.join(" ") || "No supporting signals returned.")}</p>
+    ${summaryWarnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(summaryWarnings.join(" "))}</p>` : ""}
+    ${missingSignals.length ? `<p><strong>Missing:</strong> ${escapeHtml(missingSignals.join(", "))}</p>` : ""}
   `;
 }
 
@@ -1687,6 +1747,7 @@ async function refreshIntelligence() {
 
   let spotPayload = null;
   let intelligencePayload = null;
+  let decisionPayload = null;
   if (modeLabel === "live") {
     try {
       spotPayload = await getSpotRecommendations(input);
@@ -1698,9 +1759,15 @@ async function refreshIntelligence() {
     } catch {
       intelligencePayload = null;
     }
+    try {
+      decisionPayload = await getTripDecision(input);
+    } catch {
+      decisionPayload = null;
+    }
   }
   renderSpotRecommendations(spotPayload, modeLabel);
   renderUnifiedIntelligence(intelligencePayload, modeLabel);
+  renderTripDecision(decisionPayload, modeLabel);
 
   let speciesList = [];
   try {
