@@ -57,6 +57,8 @@ const spotFilterNoteEl = document.getElementById("spot-filter-note");
 const intelligenceEl = document.getElementById("intelligence-output");
 const decisionEl = document.getElementById("decision-output");
 const tripPrepEl = document.getElementById("trip-prep-output");
+const sessionStartIntelligenceEl = document.getElementById("session-start-intelligence-output");
+const applySessionStartSuggestionsBtn = document.getElementById("apply-session-start-suggestions-btn");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const fightEl = document.getElementById("fight-output");
@@ -115,6 +117,7 @@ let currentSavedSpots = [];
 let currentLoadedSavedSpotId = null;
 let currentSessionHistory = [];
 let currentSessionHistoryDetail = null;
+let currentSessionStartSuggestion = null;
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
 
@@ -647,6 +650,40 @@ async function getTripPrep(input) {
   return response.json();
 }
 
+async function getSessionStartSuggestions(input) {
+  const spotPreferences = getSpotPreferenceState();
+  const params = new URLSearchParams({
+    lat: String(input.lat),
+    lng: String(input.lng),
+    waterType: input.waterType,
+    accessMode: input.accessMode,
+  });
+
+  if (input.tideStationId) params.set("tideStationId", input.tideStationId);
+  if (input.spot) params.set("spotName", input.spot);
+  if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+  if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
+  if (spotPreferences.filterMode !== "default") params.set("filterMode", spotPreferences.filterMode);
+  if (spotPreferences.rankMode !== "environment_first") params.set("rankMode", spotPreferences.rankMode);
+
+  const response = await fetch(`${API_BASE}/session-start?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Session-start endpoint failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
@@ -803,6 +840,40 @@ function renderTripPrep(payload, modeLabel) {
     ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
     ${baseReasons.length ? `<p><strong>Why:</strong> ${escapeHtml(baseReasons.join(" "))}</p>` : ""}
     ${signalsMissing.length ? `<p><strong>Missing:</strong> ${escapeHtml(signalsMissing.join(", "))}</p>` : ""}
+  `;
+}
+
+function renderSessionStartIntelligence(payload, modeLabel) {
+  if (!sessionStartIntelligenceEl) return;
+
+  currentSessionStartSuggestion = payload || null;
+
+  if (!payload) {
+    sessionStartIntelligenceEl.innerHTML = `<p class="muted">Session-start guidance unavailable in ${modeLabel}.</p>`;
+    return;
+  }
+
+  const sessionStart = payload.sessionStart || {};
+  const startingContext = payload.startingContext || {};
+  const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  const baseReasons = Array.isArray(payload.explanation?.baseReasons) ? payload.explanation.baseReasons : [];
+  const missingSignals = Array.isArray(payload.explanation?.signalsMissing) ? payload.explanation.signalsMissing : [];
+
+  sessionStartIntelligenceEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(sessionStart.readiness)}">${escapeHtml(String(sessionStart.readiness || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(sessionStart.suggestedSessionName || "Fishing Session")}</strong>
+    </div>
+    <p><strong>Species focus:</strong> ${escapeHtml(sessionStart.suggestedSpeciesFocus || "n/a")}</p>
+    <p><strong>Starting rig:</strong> ${escapeHtml(sessionStart.suggestedStartingRig || "n/a")}</p>
+    <p><strong>Focus spot:</strong> ${escapeHtml(sessionStart.suggestedFocusSpot || "n/a")}</p>
+    <p><strong>Location label:</strong> ${escapeHtml(sessionStart.suggestedLocationLabel || "n/a")}</p>
+    <p><strong>Departure window:</strong> ${escapeHtml(startingContext.departureWindow || "No departure window guidance returned.")}</p>
+    <p><strong>Expectation:</strong> ${escapeHtml(startingContext.expectation || "No expectation guidance returned.")}</p>
+    <p><strong>Trip decision:</strong> ${escapeHtml(startingContext.tripDecision || "No trip decision guidance returned.")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${baseReasons.length ? `<p><strong>Why:</strong> ${escapeHtml(baseReasons.join(" | "))}</p>` : ""}
+    ${missingSignals.length ? `<p><strong>Missing:</strong> ${escapeHtml(missingSignals.join(", "))}</p>` : ""}
   `;
 }
 
@@ -1818,6 +1889,7 @@ async function refreshIntelligence() {
   let intelligencePayload = null;
   let decisionPayload = null;
   let tripPrepPayload = null;
+  let sessionStartPayload = null;
   if (modeLabel === "live") {
     try {
       spotPayload = await getSpotRecommendations(input);
@@ -1839,11 +1911,17 @@ async function refreshIntelligence() {
     } catch {
       tripPrepPayload = null;
     }
+    try {
+      sessionStartPayload = await getSessionStartSuggestions(input);
+    } catch {
+      sessionStartPayload = null;
+    }
   }
   renderSpotRecommendations(spotPayload, modeLabel);
   renderUnifiedIntelligence(intelligencePayload, modeLabel);
   renderTripDecision(decisionPayload, modeLabel);
   renderTripPrep(tripPrepPayload, modeLabel);
+  renderSessionStartIntelligence(sessionStartPayload, modeLabel);
 
   let speciesList = [];
   try {
@@ -2287,6 +2365,43 @@ if (sessionStartForm) {
 
 if (sessionSpeciesFocusInputEl) {
   sessionSpeciesFocusInputEl.addEventListener("input", syncSessionStartDefaults);
+}
+
+if (applySessionStartSuggestionsBtn) {
+  applySessionStartSuggestionsBtn.addEventListener("click", () => {
+    if (currentFishingSession?.sessionId) {
+      showAuthStatus("An active session is already running. End it before applying new start suggestions.", "warn");
+      return;
+    }
+
+    if (!currentUser) {
+      showAuthStatus("Login to copy session-start suggestions into the session form.", "warn");
+      return;
+    }
+
+    if (!currentSessionStartSuggestion?.sessionStart) {
+      showAuthStatus("Refresh live intelligence before applying session-start suggestions.", "warn");
+      return;
+    }
+
+    const sessionStart = currentSessionStartSuggestion.sessionStart;
+
+    if (sessionNameInputEl && sessionStart.suggestedSessionName) {
+      sessionNameInputEl.value = sessionStart.suggestedSessionName;
+      lastSuggestedSessionName = sessionStart.suggestedSessionName;
+    }
+
+    if (
+      sessionSpeciesFocusInputEl &&
+      sessionStart.suggestedSpeciesFocus &&
+      String(sessionStart.suggestedSpeciesFocus).toLowerCase() !== "n/a"
+    ) {
+      sessionSpeciesFocusInputEl.value = sessionStart.suggestedSpeciesFocus;
+      lastSuggestedSpeciesFocus = sessionStart.suggestedSpeciesFocus;
+    }
+
+    showAuthStatus("Session-start suggestions copied into the form. Review them before starting the trip.", "ok");
+  });
 }
 
 if (endSessionBtn) {
