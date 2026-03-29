@@ -56,6 +56,7 @@ const spotRankHistoryFirstEl = document.getElementById("spot-rank-history-first"
 const spotFilterNoteEl = document.getElementById("spot-filter-note");
 const intelligenceEl = document.getElementById("intelligence-output");
 const decisionEl = document.getElementById("decision-output");
+const tripPrepEl = document.getElementById("trip-prep-output");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const fightEl = document.getElementById("fight-output");
@@ -612,6 +613,40 @@ async function getTripDecision(input) {
   return response.json();
 }
 
+async function getTripPrep(input) {
+  const spotPreferences = getSpotPreferenceState();
+  const params = new URLSearchParams({
+    lat: String(input.lat),
+    lng: String(input.lng),
+    waterType: input.waterType,
+    accessMode: input.accessMode,
+  });
+
+  if (input.tideStationId) params.set("tideStationId", input.tideStationId);
+  if (input.spot) params.set("spotName", input.spot);
+  if (input.pressureTrend) params.set("pressureTrend", input.pressureTrend);
+  if (Number.isInteger(currentLoadedSavedSpotId)) params.set("savedSpotId", String(currentLoadedSavedSpotId));
+  if (spotPreferences.filterMode !== "default") params.set("filterMode", spotPreferences.filterMode);
+  if (spotPreferences.rankMode !== "environment_first") params.set("rankMode", spotPreferences.rankMode);
+
+  const response = await fetch(`${API_BASE}/trip-prep?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    throw new Error(payload?.error || `Trip prep endpoint failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
@@ -734,6 +769,40 @@ function renderTripDecision(payload, modeLabel) {
     <p><strong>Signals:</strong> ${escapeHtml(supportingSignals.join(" ") || "No supporting signals returned.")}</p>
     ${summaryWarnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(summaryWarnings.join(" "))}</p>` : ""}
     ${missingSignals.length ? `<p><strong>Missing:</strong> ${escapeHtml(missingSignals.join(", "))}</p>` : ""}
+  `;
+}
+
+function renderTripPrep(payload, modeLabel) {
+  if (!tripPrepEl) return;
+
+  if (!payload) {
+    tripPrepEl.innerHTML = `<p class="muted">Trip prep unavailable in ${modeLabel}.</p>`;
+    return;
+  }
+
+  const prep = payload.tripPrep || {};
+  const checklist = payload.checklist || {};
+  const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  const baseReasons = Array.isArray(payload.explanation?.baseReasons) ? payload.explanation.baseReasons : [];
+  const signalsMissing = Array.isArray(payload.explanation?.signalsMissing) ? payload.explanation.signalsMissing : [];
+  const gear = Array.isArray(checklist.gear) ? checklist.gear : [];
+  const notes = Array.isArray(checklist.notes) ? checklist.notes : [];
+
+  tripPrepEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(prep.confidence)}">${escapeHtml(String(prep.confidence || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(prep.expectation || "Trip prep available")}</strong>
+    </div>
+    <p><strong>Departure window:</strong> ${escapeHtml(prep.recommendedDepartureWindow || "No strong departure window identified.")}</p>
+    <p><strong>Starting rig:</strong> ${escapeHtml(prep.suggestedStartingRig || "n/a")}</p>
+    <p><strong>Target species:</strong> ${escapeHtml(prep.suggestedTargetSpecies || "n/a")}</p>
+    <p><strong>Focus spot:</strong> ${escapeHtml(prep.suggestedFocusSpot || "n/a")}</p>
+    <p><strong>Conditions:</strong> ${escapeHtml(prep.conditionsSummary || "No trip-prep conditions summary returned.")}</p>
+    <p><strong>Checklist:</strong> ${escapeHtml(gear.join(" | ") || "No special gear callouts.")}</p>
+    <p><strong>Prep notes:</strong> ${escapeHtml(notes.join(" | ") || "No additional prep notes returned.")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${baseReasons.length ? `<p><strong>Why:</strong> ${escapeHtml(baseReasons.join(" "))}</p>` : ""}
+    ${signalsMissing.length ? `<p><strong>Missing:</strong> ${escapeHtml(signalsMissing.join(", "))}</p>` : ""}
   `;
 }
 
@@ -1748,6 +1817,7 @@ async function refreshIntelligence() {
   let spotPayload = null;
   let intelligencePayload = null;
   let decisionPayload = null;
+  let tripPrepPayload = null;
   if (modeLabel === "live") {
     try {
       spotPayload = await getSpotRecommendations(input);
@@ -1764,10 +1834,16 @@ async function refreshIntelligence() {
     } catch {
       decisionPayload = null;
     }
+    try {
+      tripPrepPayload = await getTripPrep(input);
+    } catch {
+      tripPrepPayload = null;
+    }
   }
   renderSpotRecommendations(spotPayload, modeLabel);
   renderUnifiedIntelligence(intelligencePayload, modeLabel);
   renderTripDecision(decisionPayload, modeLabel);
+  renderTripPrep(tripPrepPayload, modeLabel);
 
   let speciesList = [];
   try {
