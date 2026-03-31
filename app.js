@@ -111,6 +111,10 @@ const analyticsNoteEl = document.getElementById("analytics-note");
 const analyticsKpisEl = document.getElementById("analytics-kpis");
 const analyticsInsightsEl = document.getElementById("analytics-insights");
 const analyticsRefreshBtn = document.getElementById("analytics-refresh-btn");
+const profileNoteEl = document.getElementById("profile-note");
+const profileWrapEl = document.getElementById("profile-wrap");
+const profileOutputEl = document.getElementById("profile-output");
+const profileRefreshBtn = document.getElementById("profile-refresh-btn");
 
 let speciesSearchTimer = null;
 const speciesSearchCache = new Map();
@@ -2149,6 +2153,50 @@ function renderAnalytics(summary, isLoggedIn) {
   });
 }
 
+function renderFishingProfile(profilePayload, isLoggedIn) {
+  if (!profileNoteEl || !profileWrapEl || !profileOutputEl) return;
+
+  if (!isLoggedIn) {
+    profileNoteEl.textContent = "Login to view your fishing profile.";
+    profileWrapEl.hidden = true;
+    profileOutputEl.innerHTML = "";
+    if (profileRefreshBtn) profileRefreshBtn.hidden = true;
+    return;
+  }
+
+  if (!profilePayload) {
+    profileNoteEl.textContent = "Fishing profile unavailable right now.";
+    profileWrapEl.hidden = true;
+    profileOutputEl.innerHTML = "";
+    if (profileRefreshBtn) profileRefreshBtn.hidden = false;
+    return;
+  }
+
+  const strengths = Array.isArray(profilePayload.strengths) ? profilePayload.strengths : [];
+  const tendencies = Array.isArray(profilePayload.tendencies) ? profilePayload.tendencies : [];
+  const improvementAreas = Array.isArray(profilePayload.improvementAreas) ? profilePayload.improvementAreas : [];
+  const patterns = Array.isArray(profilePayload.patterns) ? profilePayload.patterns : [];
+  const warnings = Array.isArray(profilePayload.warnings) ? profilePayload.warnings : [];
+
+  profileNoteEl.textContent = "User-level summary from completed sessions, reviews, comparisons, and analytics.";
+  profileWrapEl.hidden = false;
+  if (profileRefreshBtn) profileRefreshBtn.hidden = false;
+  profileOutputEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(profilePayload.profile?.confidence)}">${escapeHtml(String(profilePayload.profile?.confidence || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(String(profilePayload.profile?.style || "low-data exploratory angler"))}</strong>
+    </div>
+    <p><strong>Style:</strong> ${escapeHtml(profilePayload.profile?.style || "No clear style yet.")}</p>
+    <p><strong>Consistency:</strong> ${escapeHtml(String(profilePayload.profile?.consistency || "low").toUpperCase())}</p>
+    <p><strong>Summary:</strong> ${escapeHtml(profilePayload.profile?.summary || "No profile summary returned.")}</p>
+    <p><strong>Strengths:</strong> ${escapeHtml(strengths.join(" | ") || "No repeatable strength is confirmed yet.")}</p>
+    <p><strong>Tendencies:</strong> ${escapeHtml(tendencies.join(" | ") || "No stable user-level tendency is confirmed yet.")}</p>
+    <p><strong>Improvement areas:</strong> ${escapeHtml(improvementAreas.join(" | ") || "No repeatable improvement area is isolated yet.")}</p>
+    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No cross-session pattern is isolated yet.")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+  `;
+}
+
 async function refreshAnalytics() {
   if (!currentUser) {
     renderAnalytics(null, false);
@@ -2160,6 +2208,20 @@ async function refreshAnalytics() {
     renderAnalytics(analyticsSummary, true);
   } catch {
     renderAnalytics(null, true);
+  }
+}
+
+async function refreshFishingProfile() {
+  if (!currentUser) {
+    renderFishingProfile(null, false);
+    return;
+  }
+
+  try {
+    const profile = await api("/profile", { method: "GET" });
+    renderFishingProfile(profile, true);
+  } catch {
+    renderFishingProfile(null, true);
   }
 }
 
@@ -2224,6 +2286,7 @@ async function refreshSession() {
     renderCatches(items);
 
     await refreshAnalytics();
+    await refreshFishingProfile();
     await refreshSavedSpots();
     await refreshFishingSession();
     await refreshSessionHistory();
@@ -2235,6 +2298,7 @@ async function refreshSession() {
     catchAuthNote.hidden = false;
     renderCatches([]);
     renderAnalytics(null, false);
+    renderFishingProfile(null, false);
     await refreshSavedSpots();
     renderFishingSession(null, false);
     renderSessionHistory([], false);
@@ -2390,6 +2454,7 @@ catchForm.addEventListener("submit", async (event) => {
     const items = await api("/catches", { method: "GET" });
     renderCatches(items);
     await refreshAnalytics();
+    await refreshFishingProfile();
     await refreshFishingSession();
   } catch (error) {
     showAuthStatus(error.message, "warn");
@@ -2488,6 +2553,7 @@ if (endSessionBtn) {
         method: "POST",
       });
       await refreshFishingSession();
+      await refreshFishingProfile();
       await refreshSessionHistory();
     } catch (error) {
       showAuthStatus(error.message, "warn");
@@ -2690,6 +2756,11 @@ if (scoreBreakdownToggleEl) {
 if (analyticsRefreshBtn) {
   analyticsRefreshBtn.addEventListener("click", async () => {
     await refreshAnalytics();
+  });
+}
+if (profileRefreshBtn) {
+  profileRefreshBtn.addEventListener("click", async () => {
+    await refreshFishingProfile();
   });
 }
   if (savedSpotsSelectEl) {
