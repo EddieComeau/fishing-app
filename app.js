@@ -101,6 +101,8 @@ const sessionShareNoteEl = document.getElementById("session-share-note");
 const sessionHistoryDetailSuggestionsWrapEl = document.getElementById("session-history-detail-suggestions-wrap");
 const sessionHistoryDetailSuggestionsEl = document.getElementById("session-history-detail-suggestions");
 const sessionHistoryDetailInsightsEl = document.getElementById("session-history-detail-insights");
+const sessionHistoryReviewWrapEl = document.getElementById("session-history-review-wrap");
+const sessionHistoryReviewOutputEl = document.getElementById("session-history-review-output");
 const speciesOptionsEl = document.getElementById("species-options");
 const speciesInputEl = document.getElementById("species-input");
 const analyticsNoteEl = document.getElementById("analytics-note");
@@ -1194,9 +1196,42 @@ function clearSessionHistoryDetail() {
   if (sessionHistoryDetailSuggestionsWrapEl) sessionHistoryDetailSuggestionsWrapEl.hidden = true;
   if (sessionHistoryDetailSuggestionsEl) sessionHistoryDetailSuggestionsEl.innerHTML = "";
   if (sessionHistoryDetailInsightsEl) sessionHistoryDetailInsightsEl.innerHTML = "";
+  if (sessionHistoryReviewWrapEl) sessionHistoryReviewWrapEl.hidden = true;
+  if (sessionHistoryReviewOutputEl) sessionHistoryReviewOutputEl.innerHTML = "";
 }
 
-function renderSessionHistoryDetail(summary) {
+function renderSessionReview(review) {
+  if (!sessionHistoryReviewWrapEl || !sessionHistoryReviewOutputEl) return;
+
+  if (!review) {
+    sessionHistoryReviewWrapEl.hidden = true;
+    sessionHistoryReviewOutputEl.innerHTML = "";
+    return;
+  }
+
+  const whatWorked = Array.isArray(review.whatWorked) ? review.whatWorked : [];
+  const whatDidNotWork = Array.isArray(review.whatDidNotWork) ? review.whatDidNotWork : [];
+  const patterns = Array.isArray(review.patterns) ? review.patterns : [];
+  const missedOpportunities = Array.isArray(review.missedOpportunities) ? review.missedOpportunities : [];
+  const warnings = Array.isArray(review.warnings) ? review.warnings : [];
+
+  sessionHistoryReviewWrapEl.hidden = false;
+  sessionHistoryReviewOutputEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(review.review?.confidence)}">${escapeHtml(String(review.review?.confidence || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(String(review.review?.overallOutcome || "mixed").toUpperCase())}</strong>
+    </div>
+    <p><strong>Expectation match:</strong> ${escapeHtml(String(review.review?.expectationMatch || "matched").toUpperCase())}</p>
+    <p><strong>Summary:</strong> ${escapeHtml(review.review?.summary || "No session review summary returned.")}</p>
+    <p><strong>What worked:</strong> ${escapeHtml(whatWorked.join(" | ") || "No strong success pattern was confirmed.")}</p>
+    <p><strong>What didn't work:</strong> ${escapeHtml(whatDidNotWork.join(" | ") || "No clear failure pattern was isolated.")}</p>
+    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No clear session pattern was isolated.")}</p>
+    <p><strong>Missed opportunities:</strong> ${escapeHtml(missedOpportunities.join(" | ") || "No major missed opportunity was identified.")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+  `;
+}
+
+function renderSessionHistoryDetail(summary, review = null) {
   if (!summary || !sessionHistoryDetailEl) return;
 
   currentSessionHistoryDetail = summary;
@@ -1209,6 +1244,7 @@ function renderSessionHistoryDetail(summary) {
   );
   renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
   renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insights available yet.");
+  renderSessionReview(review);
   setSessionShareNote("Create a read-only public link if you want to share this completed trip.");
 }
 
@@ -1216,8 +1252,11 @@ async function loadSessionHistoryDetail(sessionId) {
   if (!currentUser || !Number.isInteger(sessionId)) return;
 
   try {
-    const summary = await api(`/sessions/${sessionId}`, { method: "GET" });
-    renderSessionHistoryDetail(summary);
+    const [summary, review] = await Promise.all([
+      api(`/sessions/${sessionId}`, { method: "GET" }),
+      api(`/sessions/${sessionId}/review`, { method: "GET" }),
+    ]);
+    renderSessionHistoryDetail(summary, review);
   } catch (error) {
     clearSessionHistoryDetail();
     showAuthStatus(error.message, "warn");
