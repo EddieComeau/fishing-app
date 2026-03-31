@@ -103,6 +103,8 @@ const sessionHistoryDetailSuggestionsEl = document.getElementById("session-histo
 const sessionHistoryDetailInsightsEl = document.getElementById("session-history-detail-insights");
 const sessionHistoryReviewWrapEl = document.getElementById("session-history-review-wrap");
 const sessionHistoryReviewOutputEl = document.getElementById("session-history-review-output");
+const sessionHistoryComparisonWrapEl = document.getElementById("session-history-comparison-wrap");
+const sessionHistoryComparisonOutputEl = document.getElementById("session-history-comparison-output");
 const speciesOptionsEl = document.getElementById("species-options");
 const speciesInputEl = document.getElementById("species-input");
 const analyticsNoteEl = document.getElementById("analytics-note");
@@ -1198,6 +1200,8 @@ function clearSessionHistoryDetail() {
   if (sessionHistoryDetailInsightsEl) sessionHistoryDetailInsightsEl.innerHTML = "";
   if (sessionHistoryReviewWrapEl) sessionHistoryReviewWrapEl.hidden = true;
   if (sessionHistoryReviewOutputEl) sessionHistoryReviewOutputEl.innerHTML = "";
+  if (sessionHistoryComparisonWrapEl) sessionHistoryComparisonWrapEl.hidden = true;
+  if (sessionHistoryComparisonOutputEl) sessionHistoryComparisonOutputEl.innerHTML = "";
 }
 
 function renderSessionReview(review) {
@@ -1231,7 +1235,35 @@ function renderSessionReview(review) {
   `;
 }
 
-function renderSessionHistoryDetail(summary, review = null) {
+function renderSessionComparison(comparison) {
+  if (!sessionHistoryComparisonWrapEl || !sessionHistoryComparisonOutputEl) return;
+
+  if (!comparison) {
+    sessionHistoryComparisonWrapEl.hidden = true;
+    sessionHistoryComparisonOutputEl.innerHTML = "";
+    return;
+  }
+
+  const patterns = Array.isArray(comparison.patterns) ? comparison.patterns : [];
+  const warnings = Array.isArray(comparison.warnings) ? comparison.warnings : [];
+  const deltas = comparison.deltas || {};
+
+  sessionHistoryComparisonWrapEl.hidden = false;
+  sessionHistoryComparisonOutputEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(comparison.comparison?.confidence)}">${escapeHtml(String(comparison.comparison?.confidence || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(String(comparison.comparison?.relativeOutcome || "typical").replace(/_/g, " ").toUpperCase())}</strong>
+    </div>
+    <p><strong>Trend:</strong> ${escapeHtml(String(comparison.comparison?.trend || "unclear").toUpperCase())}</p>
+    <p><strong>Baseline window:</strong> ${escapeHtml(String(comparison.comparison?.baselineWindow || 5))} recent ended sessions</p>
+    <p><strong>Summary:</strong> ${escapeHtml(comparison.comparison?.summary || "No session comparison summary returned.")}</p>
+    <p><strong>Deltas:</strong> ${escapeHtml(`Catches ${Number(deltas.catchesDelta || 0) >= 0 ? "+" : ""}${Number(deltas.catchesDelta || 0)}, Duration ${Number(deltas.durationDeltaMinutes || 0) >= 0 ? "+" : ""}${Number(deltas.durationDeltaMinutes || 0)}m, Top rig match ${deltas.topRigMatch ? "yes" : "no"}, Top species match ${deltas.topSpeciesMatch ? "yes" : "no"}`)}</p>
+    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No clear recent-session comparison pattern was isolated.")}</p>
+    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+  `;
+}
+
+function renderSessionHistoryDetail(summary, review = null, comparison = null) {
   if (!summary || !sessionHistoryDetailEl) return;
 
   currentSessionHistoryDetail = summary;
@@ -1245,6 +1277,7 @@ function renderSessionHistoryDetail(summary, review = null) {
   renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
   renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insights available yet.");
   renderSessionReview(review);
+  renderSessionComparison(comparison);
   setSessionShareNote("Create a read-only public link if you want to share this completed trip.");
 }
 
@@ -1252,11 +1285,12 @@ async function loadSessionHistoryDetail(sessionId) {
   if (!currentUser || !Number.isInteger(sessionId)) return;
 
   try {
-    const [summary, review] = await Promise.all([
+    const [summary, review, comparison] = await Promise.all([
       api(`/sessions/${sessionId}`, { method: "GET" }),
       api(`/sessions/${sessionId}/review`, { method: "GET" }),
+      api(`/sessions/${sessionId}/comparison`, { method: "GET" }),
     ]);
-    renderSessionHistoryDetail(summary, review);
+    renderSessionHistoryDetail(summary, review, comparison);
   } catch (error) {
     clearSessionHistoryDetail();
     showAuthStatus(error.message, "warn");
