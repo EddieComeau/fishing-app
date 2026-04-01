@@ -4,10 +4,12 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   const email = `pw-ui-${Date.now()}@fishdex.local`;
   const password = 'TestPass123!';
 
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
   await expect(page.locator('h1')).toContainText('ReelLog');
   await expect(page.locator('#primary-start-fishing-btn')).toBeVisible();
+  await expect(page.locator('#primary-start-fishing-btn')).toHaveCSS('min-height', '52px');
   await expect(page.locator('.bottom-nav')).toContainText('Logs');
   await expect(page.locator('.bottom-nav')).toContainText('Map');
   await expect(page.locator('.bottom-nav')).toContainText('Stats');
@@ -29,7 +31,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.locator('select[name="tideStage"]').selectOption('n/a');
   await page.locator('#context-form button[type="submit"]').click();
 
-  await expect(page.locator('#status-banner')).toContainText('Manual conditions ready.');
+  await expect(page.locator('#status-banner')).toContainText('Manual plan ready.');
   await expect(page.locator('#conditions-anchor')).toContainText('Read the water first');
   await expect(page.locator('#score-reasons li')).toHaveCount(3);
   await expect(page.locator('#species-anchor')).toContainText('Focus the likely bite');
@@ -47,4 +49,14 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#active-session-card')).toBeVisible();
   await expect(page.locator('#catch-form')).toBeVisible();
   await expect(page.locator('#catch-auth-note')).toContainText('Trip live.');
+
+  await expect(page.locator('#catch-form button[type="submit"]')).toHaveCSS('min-height', '52px');
+  await page.locator('#species-input').fill('Largemouth Bass');
+  await page.locator('input[name="bait"]').fill('Worm');
+  await page.locator('input[name="rigName"]').fill('Texas rig');
+  await page.locator('select[name="baitFamily"]').selectOption('soft-plastic');
+  await page.locator('#catch-form button[type="submit"]').click();
+
+  await expect(page.locator('#auth-status')).toContainText('Catch logged.');
+  await expect(page.locator('#catch-list')).toContainText('Largemouth Bass');
 });

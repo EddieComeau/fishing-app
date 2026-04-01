@@ -25,6 +25,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   color: var(--text);
   background:
@@ -51,9 +52,12 @@ button {
   background: var(--accent);
   color: #f8fcff;
   padding: 0.82rem 1.1rem;
+  min-height: 46px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 140ms ease, filter 140ms ease, background 140ms ease, opacity 140ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:hover {
@@ -62,7 +66,26 @@ button:hover {
 }
 
 button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.985);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  filter: saturate(0.8);
+}
+
+button[aria-busy="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 0.82rem;
+  height: 0.82rem;
+  margin-right: 0.55rem;
+  border-radius: 999px;
+  border: 2px solid rgba(248, 252, 255, 0.32);
+  border-top-color: rgba(248, 252, 255, 0.95);
+  vertical-align: -0.1rem;
+  animation: button-spin 700ms linear infinite;
 }
 
 .ghost {
@@ -252,6 +275,10 @@ label {
   margin-bottom: 1rem;
 }
 
+.section-pulse {
+  animation: section-pulse 260ms ease;
+}
+
 .step-number {
   width: 2.2rem;
   height: 2.2rem;
@@ -323,6 +350,12 @@ h4 {
 
 .journey-actions {
   margin-top: 1rem;
+}
+
+.action-row > button,
+.hero-actions > button,
+.journey-actions > button {
+  min-width: 140px;
 }
 
 .inline-options {
@@ -538,7 +571,7 @@ h4 {
 .active-session-stack,
 .catch-stack {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.85rem;
 }
 
 #active-session-name {
@@ -561,6 +594,7 @@ h4 {
 
 .bottom-nav a {
   min-width: 92px;
+  min-height: 46px;
   text-align: center;
   padding: 0.75rem 0.9rem;
   border-radius: 999px;
@@ -578,6 +612,15 @@ h4 {
 #auth-forms {
   display: grid;
   gap: 1rem;
+}
+
+#catch-form button[type="submit"] {
+  min-height: 52px;
+  box-shadow: 0 12px 24px rgba(47, 128, 237, 0.22);
+}
+
+#catch-form label:first-of-type input {
+  min-height: 50px;
 }
 
 textarea {
@@ -614,7 +657,7 @@ textarea {
 
   .card {
     border-radius: 20px;
-    padding: 1rem;
+    padding: 1rem 1rem 1.15rem;
   }
 
   .hero-actions,
@@ -624,14 +667,79 @@ textarea {
     align-items: stretch;
   }
 
+  button,
+  .bottom-nav a {
+    min-height: 48px;
+  }
+
+  .primary-cta {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .home-hero {
+    gap: 1.15rem;
+  }
+
+  .support-rail,
+  .journey-rail,
+  .stats-grid {
+    gap: 1rem;
+  }
+
+  .step-heading {
+    gap: 0.75rem;
+  }
+
+  .step-number {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .kv li,
+  .list li {
+    padding: 0.95rem;
+  }
+
   .bottom-nav {
     justify-content: space-between;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
   }
 
   .bottom-nav a {
     min-width: 0;
     flex: 1;
-    padding-inline: 0.4rem;
+    padding-inline: 0.55rem;
     font-size: 0.86rem;
+  }
+
+  #active-session-card,
+  .catch-stack {
+    gap: 1rem;
+  }
+
+  #catch-form button[type="submit"] {
+    position: sticky;
+    bottom: calc(4.6rem + env(safe-area-inset-bottom));
+    z-index: 10;
+  }
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes section-pulse {
+  0% {
+    transform: translateY(10px);
+    opacity: 0.72;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

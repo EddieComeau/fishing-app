@@ -25,7 +25,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await page.locator('select[name="tideStage"]').selectOption('n/a');
   await page.locator('#context-form button[type="submit"]').click();
 
-  await expect(page.locator('#status-banner')).toContainText('Manual conditions ready.');
+  await expect(page.locator('#status-banner')).toContainText('Manual plan ready.');
   await expect(page.locator('#setup-output')).toContainText(/rig|setup/i);
 
   const suggestedSessionName = page.locator('#session-start-form input[name="name"]');

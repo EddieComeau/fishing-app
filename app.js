@@ -141,6 +141,13 @@ let currentSessionHistoryDetail = null;
 let currentSessionStartSuggestion = null;
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
+let lastCatchDraft = {
+  species: "",
+  bait: "",
+  rigName: "",
+  baitFamily: "",
+  landed: "true",
+};
 
 const PUBLIC_SHARE_BASE = API_BASE.replace(/\/api$/, "");
 
@@ -185,6 +192,13 @@ function setSessionShareNote(message, type = "muted") {
 
 function scrollToSection(element) {
   if (!element) return;
+  element.classList.remove("section-pulse");
+  requestAnimationFrame(() => {
+    element.classList.add("section-pulse");
+  });
+  window.setTimeout(() => {
+    element.classList.remove("section-pulse");
+  }, 320);
   element.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -267,10 +281,12 @@ function setButtonBusy(buttonEl, busyLabel) {
 
   const originalLabel = buttonEl.textContent;
   buttonEl.disabled = true;
+  buttonEl.setAttribute("aria-busy", "true");
   if (busyLabel) buttonEl.textContent = busyLabel;
 
   return () => {
     buttonEl.disabled = false;
+    buttonEl.removeAttribute("aria-busy");
     buttonEl.textContent = originalLabel;
   };
 }
@@ -279,6 +295,58 @@ function setLoadingState(elements, isLoading) {
   elements.forEach((element) => {
     if (!element) return;
     element.classList.toggle("is-loading", Boolean(isLoading));
+  });
+}
+
+function isTechnicalErrorMessage(message) {
+  const text = String(message || "").toLowerCase();
+  return (
+    text.includes("failed:") ||
+    text.includes("endpoint failed") ||
+    text.includes("request failed") ||
+    text.includes("networkerror") ||
+    text.includes("unexpected token") ||
+    text.includes("json")
+  );
+}
+
+function friendlyErrorMessage(error, fallback) {
+  const message = String(error?.message || "").trim();
+  if (!message) return fallback;
+  return isTechnicalErrorMessage(message) ? fallback : message;
+}
+
+function setCatchDraftFromPayload(payload) {
+  lastCatchDraft = {
+    species: String(payload?.species || "").trim(),
+    bait: String(payload?.bait || "").trim(),
+    rigName: String(payload?.rigName || "").trim(),
+    baitFamily: String(payload?.baitFamily || "").trim(),
+    landed: payload?.landed === false ? "false" : "true",
+  };
+}
+
+function restoreCatchDraft() {
+  if (!catchForm) return;
+
+  const speciesEl = catchForm.querySelector('input[name="species"]');
+  const baitEl = catchForm.querySelector('input[name="bait"]');
+  const rigEl = catchForm.querySelector('input[name="rigName"]');
+  const baitFamilyEl = catchForm.querySelector('select[name="baitFamily"]');
+  const landedEl = catchForm.querySelector('select[name="landed"]');
+
+  if (speciesEl) speciesEl.value = lastCatchDraft.species || "";
+  if (baitEl) baitEl.value = lastCatchDraft.bait || "";
+  if (rigEl) rigEl.value = lastCatchDraft.rigName || currentRigRecommendation?.rigName || "";
+  if (baitFamilyEl) baitFamilyEl.value = lastCatchDraft.baitFamily || "";
+  if (landedEl) landedEl.value = lastCatchDraft.landed || "true";
+}
+
+function focusCatchSpeciesInput() {
+  if (!speciesInputEl || catchForm?.hidden) return;
+  requestAnimationFrame(() => {
+    speciesInputEl.focus();
+    speciesInputEl.select();
   });
 }
 
@@ -1264,6 +1332,7 @@ function renderFishingSession(summary, isLoggedIn) {
     labelTopSuggestion: true,
   });
   renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
+  restoreCatchDraft();
   renderSmartInsight();
   renderHomeTripSummary();
 }
@@ -1419,7 +1488,7 @@ async function loadSessionHistoryDetail(sessionId) {
     renderSessionHistoryDetail(summary, review, comparison);
   } catch (error) {
     clearSessionHistoryDetail();
-    showAuthStatus(error.message, "warn");
+    showAuthStatus(friendlyErrorMessage(error, "Unable to load that trip right now."), "warn");
   }
 }
 
@@ -1489,7 +1558,7 @@ async function refreshSessionHistory() {
     renderSessionHistory(payload.sessions || [], true);
   } catch (error) {
     renderSessionHistory([], true);
-    sessionHistoryNoteEl.textContent = error.message || "Session history could not be loaded.";
+    sessionHistoryNoteEl.textContent = friendlyErrorMessage(error, "Session history could not be loaded.");
   }
 }
 
@@ -1740,7 +1809,7 @@ async function refreshSavedSpotSummary(savedSpotId = currentLoadedSavedSpotId) {
     renderSavedSpotSummary(summaryPayload, planPayload);
   } catch (error) {
     clearSavedSpotSummary();
-    setSavedSpotsNote(error.message, "warn");
+    setSavedSpotsNote(friendlyErrorMessage(error, "Unable to load this saved spot summary."), "warn");
   }
 }
 
@@ -1771,7 +1840,7 @@ async function refreshSavedSpots() {
   } catch (error) {
     renderSavedSpots([]);
     clearSavedSpotSummary();
-    setSavedSpotsNote(error.message, "warn");
+    setSavedSpotsNote(friendlyErrorMessage(error, "Unable to load saved spots right now."), "warn");
   }
 }
 
@@ -1789,7 +1858,7 @@ async function createSpotShareLink() {
     const copied = await copyText(publicUrl);
     setSavedSpotShareNote(copied ? `Share link copied: ${publicUrl}` : `Share link ready: ${publicUrl}`, "ok");
   } catch (error) {
-    setSavedSpotShareNote(error.message || "Could not create a share link.", "warn");
+    setSavedSpotShareNote(friendlyErrorMessage(error, "Could not create a share link."), "warn");
   } finally {
     restoreButton();
   }
@@ -1811,7 +1880,7 @@ async function createSessionShareLink() {
     const copied = await copyText(publicUrl);
     setSessionShareNote(copied ? `Share link copied: ${publicUrl}` : `Share link ready: ${publicUrl}`, "ok");
   } catch (error) {
-    setSessionShareNote(error.message || "Could not create a share link.", "warn");
+    setSessionShareNote(friendlyErrorMessage(error, "Could not create a share link."), "warn");
   } finally {
     restoreButton();
   }
@@ -2091,7 +2160,7 @@ async function refreshIntelligence() {
     } catch (error) {
       conditions = window.FishDexNormalize.normalizeManual(input);
       modeLabel = "manual fallback";
-      showStatus(`Live lookup failed. Using manual conditions instead: ${error.message}`, "warn");
+      showStatus("Live lookup failed. Using manual conditions instead.", "warn");
     }
   } else {
     conditions = window.FishDexNormalize.normalizeManual(input);
@@ -2140,6 +2209,7 @@ async function refreshIntelligence() {
   renderTripPrep(tripPrepPayload, modeLabel);
   renderSessionStartIntelligence(sessionStartPayload, modeLabel);
 
+  showStatus("Finding best species...", "ok");
   let speciesList = [];
   try {
     const query = speciesQueryForWaterType(input.waterType);
@@ -2168,12 +2238,14 @@ async function refreshIntelligence() {
   let rigPayload = null;
   let fightPayload = null;
 
+  showStatus("Evaluating rigs...", "ok");
   try {
     rigPayload = await getRigRecommendation(input, conditions, topTargetName);
   } catch {
     rigPayload = null;
   }
 
+  showStatus("Building your first move...", "ok");
   try {
     fightPayload = await getFightStrategy(input, conditions, rigPayload, topTargetName);
   } catch {
@@ -2210,8 +2282,10 @@ async function refreshIntelligence() {
   try {
     const scorePayload = await getConditionsScore(conditions, input);
     renderScore(scorePayload);
+    showStatus(modeLabel === "live" ? "Live plan ready." : "Manual plan ready.", "ok");
   } catch {
     renderScore(null);
+    showStatus("Conditions ready. Some details could not be refreshed.", "warn");
   } finally {
     setLoadingState(loadingTargets, false);
   }
@@ -2467,7 +2541,7 @@ async function onAuthSubmit(event, route) {
     await refreshSession();
     showAuthStatus(route === "/auth/register" ? "Account created and signed in." : "Login successful.", "ok");
   } catch (error) {
-    showAuthStatus(error.message, "warn");
+    showAuthStatus(friendlyErrorMessage(error, "Could not finish that sign-in request."), "warn");
   }
 }
 
@@ -2490,7 +2564,7 @@ if (forgotPasswordForm) {
       const previewSuffix = payload.previewToken ? ` Reset token preview: ${payload.previewToken}` : "";
       showAuthStatus(`${payload.message || "Password reset requested."}${previewSuffix}`, "ok");
     } catch (error) {
-      showAuthStatus(error.message, "warn");
+      showAuthStatus(friendlyErrorMessage(error, "Could not send the reset request."), "warn");
     }
   });
 }
@@ -2511,7 +2585,7 @@ if (resetPasswordForm) {
       formEl.reset();
       showAuthStatus("Password updated. You can now log in with the new password.", "ok");
     } catch (error) {
-      showAuthStatus(error.message, "warn");
+      showAuthStatus(friendlyErrorMessage(error, "Could not reset the password."), "warn");
     }
   });
 }
@@ -2596,20 +2670,28 @@ catchForm.addEventListener("submit", async (event) => {
     baitFamily: String(form.get("baitFamily") || "").trim() || null,
     landed: String(form.get("landed")) === "true",
   };
+  const submitBtn = catchForm.querySelector('button[type="submit"]');
+  const restoreButton = setButtonBusy(submitBtn, "Logging...");
 
   try {
     await api("/catches", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    setCatchDraftFromPayload(payload);
     catchForm.reset();
+    restoreCatchDraft();
     const items = await api("/catches", { method: "GET" });
     renderCatches(items);
     await refreshAnalytics();
     await refreshFishingProfile();
     await refreshFishingSession();
+    showAuthStatus("Catch logged.", "ok");
+    focusCatchSpeciesInput();
   } catch (error) {
-    showAuthStatus(error.message, "warn");
+    showAuthStatus(friendlyErrorMessage(error, "Unable to log this catch right now. Try again."), "warn");
+  } finally {
+    restoreButton();
   }
 });
 
@@ -2645,8 +2727,11 @@ if (sessionStartForm) {
       syncSessionStartDefaults();
       await refreshFishingSession();
       await refreshSessionHistory();
+      showAuthStatus("Session started.", "ok");
+      restoreCatchDraft();
+      focusCatchSpeciesInput();
     } catch (error) {
-      showAuthStatus(error.message, "warn");
+      showAuthStatus(friendlyErrorMessage(error, "Unable to start the trip right now. Try again."), "warn");
     } finally {
       restoreButton();
     }
@@ -2707,8 +2792,9 @@ if (endSessionBtn) {
       await refreshFishingSession();
       await refreshFishingProfile();
       await refreshSessionHistory();
+      showAuthStatus("Trip ended.", "ok");
     } catch (error) {
-      showAuthStatus(error.message, "warn");
+      showAuthStatus(friendlyErrorMessage(error, "Unable to end the trip right now. Try again."), "warn");
     } finally {
       restoreButton();
     }
@@ -2755,7 +2841,7 @@ if (saveCurrentSpotBtn) {
       await refreshSavedSpotSummary(response.spot?.id || null);
       setSavedSpotsNote("Saved current location context.", "ok");
     } catch (error) {
-      setSavedSpotsNote(error.message, "warn");
+      setSavedSpotsNote(friendlyErrorMessage(error, "Unable to save this location right now."), "warn");
     } finally {
       restoreButton();
     }
@@ -2784,7 +2870,7 @@ if (loadSavedSpotBtn) {
       setSavedSpotsNote(`Loaded ${response.spot?.name || "saved spot"} into the current context.`, "ok");
       showStatus("Saved spot loaded into the context form. Refresh intelligence when you are ready.", "ok");
     } catch (error) {
-      setSavedSpotsNote(error.message, "warn");
+      setSavedSpotsNote(friendlyErrorMessage(error, "Unable to load that saved spot right now."), "warn");
     } finally {
       restoreButton();
     }
@@ -2824,7 +2910,7 @@ if (updateSavedSpotBtn) {
       await refreshSavedSpotSummary(response.spot?.id || selectedId);
       setSavedSpotsNote("Saved spot updated.", "ok");
     } catch (error) {
-      setSavedSpotsNote(error.message, "warn");
+      setSavedSpotsNote(friendlyErrorMessage(error, "Unable to update that saved spot right now."), "warn");
     } finally {
       restoreButton();
     }
@@ -2855,7 +2941,7 @@ if (deleteSavedSpotBtn) {
       clearSavedSpotSummary();
       setSavedSpotsNote("Saved spot deleted.", "ok");
     } catch (error) {
-      setSavedSpotsNote(error.message, "warn");
+      setSavedSpotsNote(friendlyErrorMessage(error, "Unable to delete that saved spot right now."), "warn");
     } finally {
       restoreButton();
     }
