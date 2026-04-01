@@ -326,6 +326,10 @@ async function recommendRig(input, options = {}) {
 
   const explanation = {
     baseReasons,
+    whyNot: finalCandidates.slice(1, 4).map((candidate) => ({
+      option: candidate.rigName,
+      reason: candidate.reasons?.[0] || 'A stronger-fit rig ranked ahead of this option for the current context.',
+    })),
     warnings: [],
     modifiers: oneRankAdjustedResult.personalization.modifier ? [oneRankAdjustedResult.personalization.modifier] : [],
     metadata: {

@@ -9,6 +9,19 @@ const fallbackSpecies = [
 const API_BASE = "http://localhost:3002/api";
 
 let currentUser = null;
+const primaryStartFishingBtn = document.getElementById("primary-start-fishing-btn");
+const smartInsightOutputEl = document.getElementById("smart-insight-output");
+const homeTripOutputEl = document.getElementById("home-trip-output");
+const continueToSpeciesBtn = document.getElementById("continue-to-species-btn");
+const continueToRigBtn = document.getElementById("continue-to-rig-btn");
+const continueToStrategyBtn = document.getElementById("continue-to-strategy-btn");
+const continueToStartBtn = document.getElementById("continue-to-start-btn");
+const conditionsAnchorEl = document.getElementById("conditions-anchor");
+const speciesAnchorEl = document.getElementById("species-anchor");
+const gearAnchorEl = document.getElementById("gear-anchor");
+const strategyAnchorEl = document.getElementById("strategy-anchor");
+const startAnchorEl = document.getElementById("start-anchor");
+const activeTripAnchorEl = document.getElementById("active-trip-anchor");
 
 const contextForm = document.getElementById("context-form");
 const waterTypeEl = document.getElementById("water-type");
@@ -168,6 +181,59 @@ function setSessionShareNote(message, type = "muted") {
   if (!sessionShareNoteEl) return;
   sessionShareNoteEl.textContent = message;
   sessionShareNoteEl.className = type === "warn" ? "status warn" : type === "ok" ? "status ok" : "muted";
+}
+
+function scrollToSection(element) {
+  if (!element) return;
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderSmartInsight() {
+  if (!smartInsightOutputEl) return;
+
+  if (currentFishingSession?.sessionId) {
+    const topSuggestion = currentFishingSession.adaptiveSuggestions?.[0]?.message || "Log the next catch or refresh the trip.";
+    smartInsightOutputEl.innerHTML = `
+      <p><strong>Trip live.</strong></p>
+      <p>${escapeHtml(topSuggestion)}</p>
+    `;
+    return;
+  }
+
+  if (currentIntelligenceSnapshot?.recommendedSpecies || currentIntelligenceSnapshot?.recommendedRig) {
+    smartInsightOutputEl.innerHTML = `
+      <p><strong>Next move:</strong> ${escapeHtml(currentIntelligenceSnapshot.recommendedSpecies || "Set a target species")}</p>
+      <p>Start with ${escapeHtml(currentIntelligenceSnapshot.recommendedRig || "the top rig recommendation")} while activity is ${escapeHtml(String(currentIntelligenceSnapshot.activityLevel || "low").toUpperCase())}.</p>
+    `;
+    return;
+  }
+
+  smartInsightOutputEl.innerHTML = `<p class="muted">Set your spot and refresh conditions to surface the clearest next move.</p>`;
+}
+
+function renderHomeTripSummary() {
+  if (!homeTripOutputEl) return;
+
+  if (currentFishingSession?.sessionId) {
+    homeTripOutputEl.innerHTML = `
+      <p><strong>Active Trip:</strong> ${escapeHtml(currentFishingSession.name || "Current trip")}</p>
+      <p>${escapeHtml(currentFishingSession.locationLabel || "Location pending")} • ${escapeHtml(currentFishingSession.sessionDuration || "Active now")}</p>
+    `;
+    if (primaryStartFishingBtn) primaryStartFishingBtn.textContent = "Resume Trip";
+    return;
+  }
+
+  const lastTrip = Array.isArray(currentSessionHistory) ? currentSessionHistory[0] : null;
+  if (lastTrip) {
+    homeTripOutputEl.innerHTML = `
+      <p><strong>Last Trip:</strong> ${escapeHtml(lastTrip.name || "Recent outing")}</p>
+      <p>${escapeHtml(`${lastTrip.catches ?? 0} catches • ${lastTrip.topRig || "No top rig"} • ${lastTrip.sessionDuration || "n/a"}`)}</p>
+    `;
+  } else {
+    homeTripOutputEl.innerHTML = `<p class="muted">No completed trip yet. Build the plan, then start your first session.</p>`;
+  }
+
+  if (primaryStartFishingBtn) primaryStartFishingBtn.textContent = "Start Fishing";
 }
 
 function showStatus(message, type) {
@@ -461,6 +527,8 @@ function renderLocationRequiredState(message = "Enter latitude and longitude bef
   fightEl.textContent = "Fight guidance pending location.";
   currentRigRecommendation = null;
   currentIntelligenceSnapshot = null;
+  renderSmartInsight();
+  renderHomeTripSummary();
 }
 
 function renderSnapshot(conditions, regime, confidence, modeLabel) {
@@ -516,9 +584,9 @@ function renderBiteWindow(outlook, modeLabel) {
       <span class="activity-pill ${activityClass(outlook.activityLevel)}">${String(outlook.activityLevel || "low").toUpperCase()}</span>
       <strong>Activity Score ${outlook.activityScore ?? 0}</strong>
     </div>
-    <p><strong>Current window:</strong> ${currentWindow ? `${currentWindow.start} - ${currentWindow.end} (${currentWindow.type})` : "No major active window detected"}</p>
-    <p><strong>Next window:</strong> ${nextWindow ? `${nextWindow.start} - ${nextWindow.end} (${nextWindow.type})` : "No upcoming window detected"}</p>
-    <p><strong>Why:</strong> ${reasons.join(" ") || "No bite-window explanation returned."}</p>
+    <p><strong>Current:</strong> ${currentWindow ? `${currentWindow.start} - ${currentWindow.end} (${currentWindow.type})` : "No major active window detected"}</p>
+    <p><strong>Next:</strong> ${nextWindow ? `${nextWindow.start} - ${nextWindow.end} (${nextWindow.type})` : "No upcoming window detected"}</p>
+    <p><strong>Summary:</strong> ${reasons[0] || "No bite-window explanation returned."}</p>
     ${warnings.length ? `<p><strong>Warnings:</strong> ${warnings.join(" ")}</p>` : ""}
   `;
 }
@@ -903,7 +971,8 @@ function renderTargets(results, confidence, accessMode, alerts) {
 
   results
     .sort((a, b) => b.score - a.score)
-    .forEach((item) => {
+    .slice(0, 3)
+    .forEach((item, index) => {
       const li = document.createElement("li");
       const origin = item.origin || null;
       const taxonomyNoteHtml = item.taxonomyNote
@@ -920,14 +989,14 @@ function renderTargets(results, confidence, accessMode, alerts) {
 
       li.innerHTML = `
         <div class="item-top">
-          <strong>${item.name}</strong>
-          <span class="badge">Score ${item.score}</span>
+          <strong>${index === 0 ? `Primary: ${item.name}` : item.name}</strong>
+          <span class="badge">${String(confidence || "low").toUpperCase()}</span>
         </div>
         ${originHtml}
         ${taxonomyNoteHtml}
+        <div class="item-sub">Reason: ${item.reasons.slice(0, 2).join("; ") || "No species reason returned."}</div>
         <div class="item-sub">Confidence: ${confidence}</div>
-        <div class="item-sub">Access tactic: Work structure edges from ${accessMode}.</div>
-        <div class="item-sub">Why: ${item.reasons.slice(0, 3).join("; ")}</div>
+        <div class="item-sub">Access: Work structure edges from ${accessMode}.</div>
       `;
       targetsEl.appendChild(li);
     });
@@ -960,13 +1029,26 @@ function renderSetup(top) {
         ${typeof evidence?.landingRateGap === "number" ? `<p><strong>Landing rate gap:</strong> ${Math.round(evidence.landingRateGap * 100)} percentage points</p>` : ""}
       `
       : "";
+    const whyBullets = Array.isArray(top.reasons) ? top.reasons.slice(0, 3) : [];
+    const whyNot = Array.isArray(top.explanation?.whyNot) ? top.explanation.whyNot.slice(0, 3) : [];
     setupEl.innerHTML = `
-      <p><strong>Primary:</strong> ${top.rigName}</p>
+      <div class="activity-strip">
+        <strong>${escapeHtml(top.rigName)}</strong>
+        <span class="confidence-badge ${confidenceClass(top.personalizationPreview ? "high" : "moderate")}">${top.personalizationPreview ? "PERSONALIZED" : "BASE"}</span>
+      </div>
+      <p><strong>Confidence:</strong> ${escapeHtml(String(top.explanation?.modifiers?.[0]?.confidence || "moderate").toUpperCase())}</p>
+      <p><strong>Why:</strong></p>
+      <ul class="list compact-list">
+        ${whyBullets.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("") || "<li>No reasons returned.</li>"}
+      </ul>
+      <p><strong>Why Not:</strong></p>
+      <ul class="list compact-list">
+        ${whyNot.map((item) => `<li><strong>${escapeHtml(item.option)}:</strong> ${escapeHtml(item.reason)}</li>`).join("") || "<li>No alternate valid options were surfaced.</li>"}
+      </ul>
       <p><strong>Rod:</strong> ${top.rod.power}, ${top.rod.length}, ${top.rod.action}</p>
       <p><strong>Main line:</strong> ${top.line.type} ${top.line.strengthLb} lb</p>
       <p><strong>Leader:</strong> ${top.leader.type} ${top.leader.strengthLb} lb, ${top.leader.lengthIn} in</p>
       <p><strong>Snag risk:</strong> ${top.snagRisk}</p>
-      <p><strong>Why:</strong> ${(top.reasons || []).join("; ") || "No reasons returned"}</p>
       ${personalizationText}
     `;
     return;
@@ -989,20 +1071,26 @@ function renderFight(top, accessMode) {
   }
 
   if (top.pressurePlan && top.dragGuidance) {
+    const firstMove = Array.isArray(top.landingTips) && top.landingTips.length
+      ? top.landingTips[0]
+      : "Make your first cast where current or structure naturally compresses bait.";
+    const warning = Array.isArray(top.riskFactors) && top.riskFactors.length
+      ? top.riskFactors[0]
+      : "Watch for control loss around cover and avoid rushing the landing.";
     fightEl.innerHTML = `
-      <p><strong>Pressure plan:</strong> ${top.pressurePlan}</p>
-      <p><strong>Drag guidance:</strong> ${top.dragGuidance}</p>
-      <p><strong>Landing tips:</strong> ${(top.landingTips || []).join("; ") || "No tips returned"}</p>
-      <p><strong>Risk factors:</strong> ${(top.riskFactors || []).join("; ") || "No major risks flagged"}</p>
-      <p><strong>Why:</strong> ${(top.reasons || []).join("; ") || "No reasons returned"}</p>
+      <p><strong>Approach:</strong> ${top.pressurePlan}</p>
+      <p><strong>Positioning:</strong> ${top.dragGuidance}</p>
+      <p><strong>Warning:</strong> ${warning}</p>
+      <p><strong>First move:</strong> ${firstMove}</p>
     `;
     return;
   }
 
   fightEl.innerHTML = `
-    <p><strong>Pressure plan:</strong> ${top.fightHint}</p>
-    <p><strong>Drag note:</strong> Smooth drag. Increase only if fish is heading into cover.</p>
-    <p><strong>${accessMode} landing tip:</strong> Plan a landing angle before the fish reaches you; avoid high-stick rod lifts.</p>
+    <p><strong>Approach:</strong> ${top.fightHint}</p>
+    <p><strong>Positioning:</strong> Keep an angle that preserves line control from the ${accessMode} position.</p>
+    <p><strong>Warning:</strong> Smooth drag first. Increase pressure only if the fish is heading into cover.</p>
+    <p><strong>First move:</strong> Make the first cast along the cleanest structure edge with the recommended rig.</p>
   `;
 }
 
@@ -1123,7 +1211,14 @@ function renderFishingSession(summary, isLoggedIn) {
     sessionModeNoteEl.textContent = "Login to start a fishing session.";
     sessionStartForm.hidden = true;
     activeSessionCardEl.hidden = true;
+    if (catchForm) catchForm.hidden = true;
+    if (catchAuthNote) {
+      catchAuthNote.hidden = false;
+      catchAuthNote.textContent = "Login to start a trip and log catches.";
+    }
     currentFishingSession = null;
+    renderSmartInsight();
+    renderHomeTripSummary();
     return;
   }
 
@@ -1132,8 +1227,15 @@ function renderFishingSession(summary, isLoggedIn) {
     sessionModeNoteEl.textContent = "No active fishing session. Start one to attach catches to the outing.";
     sessionStartForm.hidden = false;
     activeSessionCardEl.hidden = true;
+    if (catchForm) catchForm.hidden = true;
+    if (catchAuthNote) {
+      catchAuthNote.hidden = false;
+      catchAuthNote.textContent = "Start a trip before logging catches.";
+    }
     currentFishingSession = null;
     syncSessionStartDefaults();
+    renderSmartInsight();
+    renderHomeTripSummary();
     return;
   }
 
@@ -1141,6 +1243,11 @@ function renderFishingSession(summary, isLoggedIn) {
   sessionModeNoteEl.hidden = true;
   sessionStartForm.hidden = true;
   activeSessionCardEl.hidden = false;
+  if (catchForm) catchForm.hidden = false;
+  if (catchAuthNote) {
+    catchAuthNote.hidden = false;
+    catchAuthNote.textContent = "Trip live. Add the next catch as soon as it happens.";
+  }
   if (refreshSessionBtn) refreshSessionBtn.hidden = false;
   if (endSessionBtn) endSessionBtn.hidden = false;
   activeSessionNameEl.textContent = summary.name || "Active Session";
@@ -1150,6 +1257,8 @@ function renderFishingSession(summary, isLoggedIn) {
     labelTopSuggestion: true,
   });
   renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No session insights available yet.");
+  renderSmartInsight();
+  renderHomeTripSummary();
 }
 
 function buildActiveSessionFallbackSummary(session) {
@@ -1230,11 +1339,11 @@ function renderSessionReview(review) {
       <strong>${escapeHtml(String(review.review?.overallOutcome || "mixed").toUpperCase())}</strong>
     </div>
     <p><strong>Expectation match:</strong> ${escapeHtml(String(review.review?.expectationMatch || "matched").toUpperCase())}</p>
+    <p><strong>Total catches:</strong> ${escapeHtml(String(review.review?.totalCatches ?? review.review?.landedCount ?? "n/a"))}</p>
     <p><strong>Summary:</strong> ${escapeHtml(review.review?.summary || "No session review summary returned.")}</p>
     <p><strong>What worked:</strong> ${escapeHtml(whatWorked.join(" | ") || "No strong success pattern was confirmed.")}</p>
     <p><strong>What didn't work:</strong> ${escapeHtml(whatDidNotWork.join(" | ") || "No clear failure pattern was isolated.")}</p>
-    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No clear session pattern was isolated.")}</p>
-    <p><strong>Missed opportunities:</strong> ${escapeHtml(missedOpportunities.join(" | ") || "No major missed opportunity was identified.")}</p>
+    <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next adjustment was isolated.")}</p>
     ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }
@@ -1312,6 +1421,7 @@ function renderSessionHistory(sessions, isLoggedIn) {
     sessionHistoryNoteEl.textContent = "Login to review previous outings.";
     sessionHistoryListEl.hidden = true;
     clearSessionHistoryDetail();
+    renderHomeTripSummary();
     return;
   }
 
@@ -1321,6 +1431,7 @@ function renderSessionHistory(sessions, isLoggedIn) {
     sessionHistoryNoteEl.textContent = "No completed trips yet. End a session to add it to history.";
     sessionHistoryListEl.hidden = true;
     clearSessionHistoryDetail();
+    renderHomeTripSummary();
     return;
   }
 
@@ -1350,6 +1461,8 @@ function renderSessionHistory(sessions, isLoggedIn) {
 
     sessionHistoryListEl.appendChild(li);
   });
+
+  renderHomeTripSummary();
 }
 
 async function refreshSessionHistory() {
@@ -1923,7 +2036,7 @@ function renderScore(scorePayload) {
     return;
   }
 
-  reasons.forEach((reason) => {
+  reasons.slice(0, 3).forEach((reason) => {
     const li = document.createElement("li");
     li.textContent = reason;
     scoreReasonsEl.appendChild(li);
@@ -2063,6 +2176,9 @@ async function refreshIntelligence() {
   } else {
     syncSessionStartDefaults();
   }
+
+  renderSmartInsight();
+  renderHomeTripSummary();
 
   try {
     const scorePayload = await getConditionsScore(conditions, input);
@@ -2278,8 +2394,8 @@ async function refreshSession() {
     currentUser = payload.user;
     authForms.hidden = true;
     sessionPanel.hidden = false;
-    catchForm.hidden = false;
-    catchAuthNote.hidden = true;
+    catchForm.hidden = true;
+    catchAuthNote.hidden = false;
     sessionUserEl.textContent = `Signed in as ${currentUser.email}`;
     showAuthStatus("Session active.", "ok");
     const items = await api("/catches", { method: "GET" });
@@ -2750,7 +2866,8 @@ if (scoreBreakdownToggleEl) {
   scoreBreakdownToggleEl.addEventListener("click", () => {
     const hidden = scoreBreakdownEl.hidden;
     scoreBreakdownEl.hidden = !hidden;
-    scoreBreakdownToggleEl.textContent = hidden ? "Hide scoring breakdown" : "Show scoring breakdown";
+    if (snapshotEl) snapshotEl.hidden = !hidden;
+    scoreBreakdownToggleEl.textContent = hidden ? "Hide details" : "Expand for details";
   });
 }
 if (analyticsRefreshBtn) {
@@ -2789,10 +2906,41 @@ if (shareSessionBtn) {
   });
 }
 
+if (primaryStartFishingBtn) {
+  primaryStartFishingBtn.addEventListener("click", () => {
+    scrollToSection(currentFishingSession?.sessionId ? activeTripAnchorEl : conditionsAnchorEl);
+  });
+}
+
+if (continueToSpeciesBtn) {
+  continueToSpeciesBtn.addEventListener("click", () => {
+    scrollToSection(speciesAnchorEl);
+  });
+}
+
+if (continueToRigBtn) {
+  continueToRigBtn.addEventListener("click", () => {
+    scrollToSection(gearAnchorEl);
+  });
+}
+
+if (continueToStrategyBtn) {
+  continueToStrategyBtn.addEventListener("click", () => {
+    scrollToSection(strategyAnchorEl);
+  });
+}
+
+if (continueToStartBtn) {
+  continueToStartBtn.addEventListener("click", () => {
+    scrollToSection(startAnchorEl);
+  });
+}
+
 updateTideStationVisibility();
 updateLocationAssistForContext();
 populateSavedSpotFieldsFromContext();
 scoreBreakdownEl.hidden = true;
-if (scoreBreakdownToggleEl) scoreBreakdownToggleEl.textContent = "Show scoring breakdown";
+if (snapshotEl) snapshotEl.hidden = true;
+if (scoreBreakdownToggleEl) scoreBreakdownToggleEl.textContent = "Expand for details";
 refreshIntelligence();
 refreshSession();

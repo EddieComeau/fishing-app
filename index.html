@@ -3,421 +3,511 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FishDex Starter</title>
+    <title>ReelLog</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="hero">
-      <h1>FishDex</h1>
-      <p>Environment + tackle + technique decision support.</p>
+    <header class="app-header">
+      <div class="brand-lockup">
+        <p class="eyebrow">Structured Decision Product</p>
+        <h1>ReelLog</h1>
+        <p>FishDex intelligence, rebuilt around one clear path from launch to review.</p>
+      </div>
+      <div id="session-panel" class="session-pill" hidden>
+        <p id="session-user"></p>
+        <button id="logout-btn" class="ghost" type="button">Logout</button>
+      </div>
     </header>
 
-    <main class="grid">
-      <section class="card">
-        <h2>Account</h2>
-        <div id="auth-status" class="status" hidden></div>
-
-        <div id="auth-forms">
-          <form id="register-form">
-            <h3>Create Account</h3>
-            <label>
-              Email
-              <input name="email" type="email" placeholder="you@example.com" required />
-            </label>
-            <label>
-              Password
-              <input name="password" type="password" minlength="6" required />
-            </label>
-            <button type="submit">Register</button>
-          </form>
-
-          <form id="login-form">
-            <h3>Login</h3>
-            <label>
-              Email
-              <input name="email" type="email" placeholder="you@example.com" required />
-            </label>
-            <label>
-              Password
-              <input name="password" type="password" minlength="6" required />
-            </label>
-            <button type="submit">Login</button>
-          </form>
-
-          <form id="forgot-password-form">
-            <h3>Forgot Password</h3>
-            <label>
-              Email
-              <input name="email" type="email" placeholder="you@example.com" required />
-            </label>
-            <button type="submit">Send Reset</button>
-          </form>
-
-          <form id="reset-password-form">
-            <h3>Reset Password</h3>
-            <label>
-              Reset Token
-              <input name="token" type="text" placeholder="Paste reset token" required />
-            </label>
-            <label>
-              New Password
-              <input name="password" type="password" minlength="6" required />
-            </label>
-            <button type="submit">Update Password</button>
-          </form>
-        </div>
-
-        <div id="session-panel" hidden>
-          <p id="session-user"></p>
-          <button id="logout-btn" class="ghost" type="button">Logout</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Today Context</h2>
-        <p class="muted">Enter your own coordinates and tide station before relying on local estimates. FishDex uses the values in this form as its location basis.</p>
-        <form id="context-form">
-          <div class="action-row">
-            <button id="use-my-location-btn" class="ghost" type="button">Use My Location</button>
-          </div>
-          <p id="location-assist-note" class="muted">Use current device location anywhere in the country, or enter a custom spot manually.</p>
-          <label>
-            Spot
-            <input name="spot" type="text" placeholder="Cedar Point Jetty" required />
-          </label>
-          <label>
-            Water Type
-            <select name="waterType" id="water-type">
-              <option value="freshwater">Freshwater</option>
-              <option value="brackish" selected>Brackish</option>
-              <option value="saltwater">Saltwater</option>
-            </select>
-          </label>
-          <label>
-            Access Mode
-            <select name="accessMode">
-              <option>bank</option>
-              <option>dock</option>
-              <option>pier</option>
-              <option>bridge</option>
-              <option>kayak</option>
-              <option>boat</option>
-              <option>surf</option>
-            </select>
-          </label>
-          <label>
-            Latitude
-            <input name="lat" type="number" step="0.0001" placeholder="29.3123" required />
-          </label>
-          <label>
-            Longitude
-            <input name="lng" type="number" step="0.0001" placeholder="-94.7861" required />
-          </label>
-          <label id="tide-station-wrap">
-            NOAA Tide Station ID
-            <input name="tideStationId" type="text" placeholder="8771341" />
-          </label>
-          <label>
-            Live Mode
-            <select name="liveMode">
-              <option value="on" selected>on (server conditions)</option>
-              <option value="off">off (manual mode)</option>
-            </select>
-          </label>
-          <label>
-            Temperature (F)
-            <input name="tempF" type="number" value="74" />
-          </label>
-          <label>
-            Wind (mph)
-            <input name="windMph" type="number" value="9" />
-          </label>
-          <label>
-            Pressure Trend
-            <select name="pressureTrend">
-              <option value="steady">steady</option>
-              <option value="rising">rising</option>
-              <option value="dropping" selected>dropping</option>
-            </select>
-          </label>
-          <label>
-            Tide Stage
-            <select name="tideStage">
-              <option value="n/a">n/a</option>
-              <option value="incoming" selected>incoming</option>
-              <option value="outgoing">outgoing</option>
-              <option value="slack">slack</option>
-            </select>
-          </label>
-          <button type="submit">Refresh Intelligence</button>
-        </form>
-        <div id="saved-spots-panel" hidden>
-          <h3>Saved Spots</h3>
-          <p id="saved-spots-note" class="muted">Save a trusted location context so you can reload it quickly next time.</p>
-          <label>
-            Saved Spot List
-            <select id="saved-spots-select">
-              <option value="">No saved spots yet</option>
-            </select>
-          </label>
-          <div class="action-row">
-            <button id="load-saved-spot-btn" class="ghost" type="button">Load Selected</button>
-            <button id="delete-saved-spot-btn" class="ghost" type="button">Delete Selected</button>
-          </div>
-          <label>
-            Saved Spot Name
-            <input id="saved-spot-name" type="text" placeholder="North Jetty" />
-          </label>
-          <label>
-            Saved Spot Notes
-            <textarea id="saved-spot-notes" rows="3" placeholder="Incoming tide, inlet side, best on moving water"></textarea>
-          </label>
-          <div class="action-row">
-            <button id="save-current-spot-btn" class="ghost" type="button">Save Current Context</button>
-            <button id="update-saved-spot-btn" class="ghost" type="button">Update Selected</button>
-            <button id="share-saved-spot-btn" class="ghost" type="button">Share Spot</button>
-          </div>
-          <p id="saved-spot-share-note" class="muted"></p>
-          <div id="saved-spot-summary-wrap" hidden>
-            <p><strong>Spot Performance</strong></p>
-            <ul id="saved-spot-summary" class="kv"></ul>
-            <p><strong>Spot Insights</strong></p>
-            <ul id="saved-spot-summary-insights" class="list"></ul>
-            <p><strong>Spot Plan</strong></p>
-            <ul id="saved-spot-plan" class="list"></ul>
+    <main class="app-shell">
+      <section class="home-hero card wide" id="home-top">
+        <div class="hero-main">
+          <p class="eyebrow">One dominant journey</p>
+          <h2>Start Fishing</h2>
+          <p class="hero-copy">Move from conditions to species, rig, strategy, trip start, catch logging, and review without competing detours.</p>
+          <div class="hero-actions">
+            <button id="primary-start-fishing-btn" class="primary-cta" type="button">Start Fishing</button>
           </div>
         </div>
-        <p id="saved-spots-auth-note" class="muted">Login to save and reload fishing locations.</p>
-      </section>
-
-      <section class="card wide">
-        <h2>Conditions Snapshot</h2>
-        <div id="status-banner" class="status" hidden></div>
-        <ul id="snapshot" class="kv"></ul>
-      </section>
-
-      <section class="card wide">
-        <h2>Environmental Score</h2>
-        <h3 id="score-regime">Regime pending...</h3>
-        <div class="score-meta">
-          <span id="score-pill" class="score-pill score-mixed">Score --</span>
-          <span id="score-confidence" class="confidence-badge conf-low">LOW</span>
-        </div>
-        <p id="score-meta-text" class="muted">Scoring metadata pending.</p>
-        <div id="score-summary" class="status">Score explanation pending.</div>
-        <div id="score-warning-wrap" class="warning-wrap" hidden>
-          <strong id="score-warning-title">Environmental Warnings</strong>
-          <ul id="score-warnings" class="list"></ul>
-        </div>
-        <h4>Why conditions look this way</h4>
-        <ul id="score-reasons" class="list"></ul>
-        <button id="score-breakdown-toggle" class="ghost" type="button">Show scoring breakdown</button>
-        <ul id="score-breakdown" class="kv" hidden></ul>
-      </section>
-
-      <section class="card wide">
-        <h2>Fishing Activity Outlook</h2>
-        <div id="bite-window-output" class="bite-window-panel">
-          <p class="muted">Bite window outlook pending.</p>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Recommended Fishing Spots</h2>
-        <div class="inline-options">
-          <label class="check-row">
-            <input id="spot-filter-proven-only" type="checkbox" />
-            <span>Proven spots only</span>
-          </label>
-          <label class="check-row">
-            <input id="spot-rank-history-first" type="checkbox" />
-            <span>Prioritize historical performance</span>
-          </label>
-        </div>
-        <p id="spot-filter-note" class="muted">Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.</p>
-        <ul id="spots-output" class="list">
-          <li>Spot recommendations pending.</li>
-        </ul>
-      </section>
-
-      <section class="card wide">
-        <h2>Recommended Now</h2>
-        <div id="intelligence-output" class="bite-window-panel">
-          <p class="muted">Unified recommendation pending.</p>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Should I Fish Right Now?</h2>
-        <div id="decision-output" class="bite-window-panel">
-          <p class="muted">Trip decision pending.</p>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Trip Prep</h2>
-        <div id="trip-prep-output" class="bite-window-panel">
-          <p class="muted">Trip prep pending.</p>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Start This Trip</h2>
-        <div id="session-start-intelligence-output" class="bite-window-panel">
-          <p class="muted">Session-start guidance pending.</p>
-        </div>
-        <div class="action-row">
-          <button id="apply-session-start-suggestions-btn" class="ghost" type="button">Use These Suggestions</button>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Today's Targets</h2>
-        <p class="muted">Scores are probabilistic. Never guaranteed bites.</p>
-        <ul id="targets" class="list"></ul>
-      </section>
-
-      <section class="card">
-        <h2>Rig & Setup</h2>
-        <div id="setup-output"></div>
-      </section>
-
-      <section class="card">
-        <h2>Fight Plan</h2>
-        <div id="fight-output"></div>
-      </section>
-
-      <section class="card">
-        <h2>Log Catch</h2>
-        <p id="catch-auth-note" class="muted">Login required to submit catches.</p>
-        <form id="catch-form" hidden>
-          <label>
-            Species
-            <input id="species-input" name="species" list="species-options" type="text" placeholder="Redfish" required />
-          </label>
-          <datalist id="species-options"></datalist>
-          <label>
-            Weight (lb)
-            <input name="weight" type="number" step="0.1" min="0" placeholder="4.2" />
-          </label>
-          <label>
-            Bait / Lure
-            <input name="bait" type="text" placeholder="Paddle tail" />
-          </label>
-          <label>
-            Rig Used
-            <input id="catch-rig-name" name="rigName" type="text" placeholder="Texas rig" />
-          </label>
-          <label>
-            Bait Family
-            <select name="baitFamily">
-              <option value="">Select one</option>
-              <option value="soft-plastic">Soft Plastic</option>
-              <option value="hard-bait">Hard Bait</option>
-              <option value="jig">Jig</option>
-              <option value="spinner-bladed">Spinner / Bladed</option>
-              <option value="live-natural">Live / Natural Bait</option>
-              <option value="cut-bait">Cut Bait</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Landed
-            <select name="landed">
-              <option value="true" selected>yes</option>
-              <option value="false">no</option>
-            </select>
-          </label>
-          <button type="submit">Add Catch</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>Fishing Session</h2>
-        <p class="muted">Start a session to group catches into one outing. Ending the session closes that outing and stops new catches from attaching to it.</p>
-        <p id="session-mode-note" class="muted">Login to start a fishing session.</p>
-        <form id="session-start-form" hidden>
-          <label>
-            Session Name
-            <input name="name" type="text" placeholder="Evening redfish trip" required />
-          </label>
-          <label>
-            Species Focus
-            <input name="speciesFocus" type="text" placeholder="Redfish" />
-          </label>
-          <button type="submit">Start Session</button>
-        </form>
-        <div id="active-session-card" hidden>
-          <p id="active-session-name"></p>
-          <p id="active-session-meta" class="muted"></p>
-          <ul id="active-session-summary" class="kv"></ul>
-          <div id="active-session-suggestions-wrap" hidden>
-            <p><strong>Suggested Adjustment</strong></p>
-            <ul id="active-session-suggestions" class="list"></ul>
-          </div>
-          <ul id="active-session-insights" class="list"></ul>
-          <button id="refresh-session-btn" class="ghost" type="button">Refresh Session</button>
-          <button id="end-session-btn" class="ghost" type="button">End Session</button>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <h2>Session History</h2>
-        <p id="session-history-note" class="muted">Login to review previous outings.</p>
-        <ul id="session-history-list" class="list" hidden></ul>
-        <div id="session-history-detail" hidden>
-          <p><strong>Trip Detail</strong></p>
-          <p id="session-history-detail-name"></p>
-          <p id="session-history-detail-meta" class="muted"></p>
-          <ul id="session-history-detail-summary" class="kv"></ul>
-          <div class="action-row">
-            <button id="share-session-btn" class="ghost" type="button">Share Trip</button>
-          </div>
-          <p id="session-share-note" class="muted"></p>
-          <div id="session-history-detail-suggestions-wrap" hidden>
-            <p><strong>Adaptive Suggestions</strong></p>
-            <ul id="session-history-detail-suggestions" class="list"></ul>
-          </div>
-          <ul id="session-history-detail-insights" class="list"></ul>
-          <div id="session-history-review-wrap" hidden>
-            <p><strong>Session Review</strong></p>
-            <div id="session-history-review-output" class="bite-window-panel">
-              <p class="muted">Session review pending.</p>
+        <div class="hero-side">
+          <div class="mini-panel">
+            <p class="panel-label">Smart Insight</p>
+            <div id="smart-insight-output" class="bite-window-panel">
+              <p class="muted">Set your conditions to get a clear next step.</p>
             </div>
           </div>
-          <div id="session-history-comparison-wrap" hidden>
-            <p><strong>Session Comparison</strong></p>
-            <div id="session-history-comparison-output" class="bite-window-panel">
-              <p class="muted">Session comparison pending.</p>
+          <div class="mini-panel">
+            <p class="panel-label">Trip Focus</p>
+            <div id="home-trip-output" class="bite-window-panel">
+              <p class="muted">No active trip yet. Build your plan, then start your session.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="card wide">
-        <h2>Recent Catches</h2>
-        <ul id="catch-list" class="list"></ul>
-      </section>
+      <div class="workspace">
+        <aside class="support-rail" id="map-anchor">
+          <section class="card compact-card">
+            <h2>Account</h2>
+            <div id="auth-status" class="status" hidden></div>
 
-      <section class="card wide">
-        <h2>Personal Catch Analytics</h2>
-        <button id="analytics-refresh-btn" class="ghost" type="button" hidden>Refresh Analytics</button>
-        <p id="analytics-note" class="muted">Login to view your catch analytics.</p>
-        <ul id="analytics-kpis" class="kv" hidden></ul>
-        <ul id="analytics-insights" class="list" hidden></ul>
-      </section>
+            <div id="auth-forms">
+              <form id="register-form">
+                <h3>Create Account</h3>
+                <label>
+                  Email
+                  <input name="email" type="email" placeholder="you@example.com" required />
+                </label>
+                <label>
+                  Password
+                  <input name="password" type="password" minlength="6" required />
+                </label>
+                <button type="submit">Register</button>
+              </form>
 
-      <section class="card wide">
-        <h2>Fishing Profile</h2>
-        <button id="profile-refresh-btn" class="ghost" type="button" hidden>Refresh Profile</button>
-        <p id="profile-note" class="muted">Login to view your fishing profile.</p>
-        <div id="profile-wrap" hidden>
-          <div id="profile-output" class="bite-window-panel">
-            <p class="muted">Profile unavailable.</p>
-          </div>
-        </div>
-      </section>
+              <form id="login-form">
+                <h3>Login</h3>
+                <label>
+                  Email
+                  <input name="email" type="email" placeholder="you@example.com" required />
+                </label>
+                <label>
+                  Password
+                  <input name="password" type="password" minlength="6" required />
+                </label>
+                <button type="submit">Login</button>
+              </form>
+
+              <form id="forgot-password-form">
+                <h3>Forgot Password</h3>
+                <label>
+                  Email
+                  <input name="email" type="email" placeholder="you@example.com" required />
+                </label>
+                <button type="submit">Send Reset</button>
+              </form>
+
+              <form id="reset-password-form">
+                <h3>Reset Password</h3>
+                <label>
+                  Reset Token
+                  <input name="token" type="text" placeholder="Paste reset token" required />
+                </label>
+                <label>
+                  New Password
+                  <input name="password" type="password" minlength="6" required />
+                </label>
+                <button type="submit">Update Password</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="card compact-card">
+            <div class="step-heading">
+              <span class="step-number">0</span>
+              <div>
+                <p class="eyebrow">Map</p>
+                <h2>Fishing Context</h2>
+              </div>
+            </div>
+            <p class="muted">Set the spot and local conditions once, then move through the guided sequence.</p>
+            <form id="context-form">
+              <div class="action-row">
+                <button id="use-my-location-btn" class="ghost" type="button">Use My Location</button>
+              </div>
+              <p id="location-assist-note" class="muted">Use current device location anywhere in the country, or enter a custom spot manually.</p>
+              <label>
+                Spot
+                <input name="spot" type="text" placeholder="Cedar Point Jetty" required />
+              </label>
+              <label>
+                Water Type
+                <select name="waterType" id="water-type">
+                  <option value="freshwater">Freshwater</option>
+                  <option value="brackish" selected>Brackish</option>
+                  <option value="saltwater">Saltwater</option>
+                </select>
+              </label>
+              <label>
+                Access Mode
+                <select name="accessMode">
+                  <option>bank</option>
+                  <option>dock</option>
+                  <option>pier</option>
+                  <option>bridge</option>
+                  <option>kayak</option>
+                  <option>boat</option>
+                  <option>surf</option>
+                </select>
+              </label>
+              <label>
+                Latitude
+                <input name="lat" type="number" step="0.0001" placeholder="29.3123" required />
+              </label>
+              <label>
+                Longitude
+                <input name="lng" type="number" step="0.0001" placeholder="-94.7861" required />
+              </label>
+              <label id="tide-station-wrap">
+                NOAA Tide Station ID
+                <input name="tideStationId" type="text" placeholder="8771341" />
+              </label>
+              <label>
+                Live Mode
+                <select name="liveMode">
+                  <option value="on" selected>on (server conditions)</option>
+                  <option value="off">off (manual mode)</option>
+                </select>
+              </label>
+              <label>
+                Temperature (F)
+                <input name="tempF" type="number" value="74" />
+              </label>
+              <label>
+                Wind (mph)
+                <input name="windMph" type="number" value="9" />
+              </label>
+              <label>
+                Pressure Trend
+                <select name="pressureTrend">
+                  <option value="steady">steady</option>
+                  <option value="rising">rising</option>
+                  <option value="dropping" selected>dropping</option>
+                </select>
+              </label>
+              <label>
+                Tide Stage
+                <select name="tideStage">
+                  <option value="n/a">n/a</option>
+                  <option value="incoming" selected>incoming</option>
+                  <option value="outgoing">outgoing</option>
+                  <option value="slack">slack</option>
+                </select>
+              </label>
+              <button type="submit">Refresh Conditions</button>
+            </form>
+            <details class="expand-block">
+              <summary>Saved locations</summary>
+              <div id="saved-spots-panel" hidden>
+                <p id="saved-spots-note" class="muted">Save a trusted location context so you can reload it quickly next time.</p>
+                <label>
+                  Saved Spot List
+                  <select id="saved-spots-select">
+                    <option value="">No saved spots yet</option>
+                  </select>
+                </label>
+                <div class="action-row">
+                  <button id="load-saved-spot-btn" class="ghost" type="button">Load Selected</button>
+                  <button id="delete-saved-spot-btn" class="ghost" type="button">Delete Selected</button>
+                </div>
+                <label>
+                  Saved Spot Name
+                  <input id="saved-spot-name" type="text" placeholder="North Jetty" />
+                </label>
+                <label>
+                  Saved Spot Notes
+                  <textarea id="saved-spot-notes" rows="3" placeholder="Incoming tide, inlet side, best on moving water"></textarea>
+                </label>
+                <div class="action-row">
+                  <button id="save-current-spot-btn" class="ghost" type="button">Save Current Context</button>
+                  <button id="update-saved-spot-btn" class="ghost" type="button">Update Selected</button>
+                  <button id="share-saved-spot-btn" class="ghost" type="button">Share Spot</button>
+                </div>
+                <p id="saved-spot-share-note" class="muted"></p>
+                <div id="saved-spot-summary-wrap" hidden>
+                  <p><strong>Spot Performance</strong></p>
+                  <ul id="saved-spot-summary" class="kv"></ul>
+                  <p><strong>Spot Insights</strong></p>
+                  <ul id="saved-spot-summary-insights" class="list"></ul>
+                  <p><strong>Spot Plan</strong></p>
+                  <ul id="saved-spot-plan" class="list"></ul>
+                </div>
+              </div>
+              <p id="saved-spots-auth-note" class="muted">Login to save and reload fishing locations.</p>
+            </details>
+          </section>
+        </aside>
+
+        <section class="journey-rail">
+          <section class="card journey-step wide" id="conditions-anchor">
+            <div class="step-heading">
+              <span class="step-number">1</span>
+              <div>
+                <p class="eyebrow">Conditions</p>
+                <h2>Read the water first</h2>
+              </div>
+            </div>
+            <div id="status-banner" class="status" hidden></div>
+            <h3 id="score-regime">Regime pending...</h3>
+            <div class="score-meta">
+              <span id="score-pill" class="score-pill score-mixed">Score --</span>
+              <span id="score-confidence" class="confidence-badge conf-low">LOW</span>
+            </div>
+            <div id="bite-window-output" class="bite-window-panel">
+              <p class="muted">Bite window outlook pending.</p>
+            </div>
+            <p id="score-meta-text" class="muted">Scoring metadata pending.</p>
+            <div id="score-summary" class="status">Score explanation pending.</div>
+            <p class="panel-label">Top signals</p>
+            <ul id="score-reasons" class="list compact-list"></ul>
+            <button id="score-breakdown-toggle" class="ghost" type="button">Expand for details</button>
+            <div class="detail-stack">
+              <div id="score-warning-wrap" class="warning-wrap" hidden>
+                <strong id="score-warning-title">Environmental Warnings</strong>
+                <ul id="score-warnings" class="list"></ul>
+              </div>
+              <ul id="snapshot" class="kv" hidden></ul>
+              <ul id="score-breakdown" class="kv" hidden></ul>
+            </div>
+            <div class="journey-actions">
+              <button id="continue-to-species-btn" class="ghost" type="button">Continue → Species</button>
+            </div>
+          </section>
+
+          <section class="card journey-step wide" id="species-anchor">
+            <div class="step-heading">
+              <span class="step-number">2</span>
+              <div>
+                <p class="eyebrow">Species</p>
+                <h2>Focus the likely bite</h2>
+              </div>
+            </div>
+            <p class="muted">Top targets only. Keep the decision small and clear.</p>
+            <ul id="targets" class="list"></ul>
+            <div class="journey-actions">
+              <button id="continue-to-rig-btn" class="ghost" type="button">Continue → Rig</button>
+            </div>
+          </section>
+
+          <section class="card journey-step wide" id="gear-anchor">
+            <div class="step-heading">
+              <span class="step-number">3</span>
+              <div>
+                <p class="eyebrow">Rig</p>
+                <h2>Fish one clear setup</h2>
+              </div>
+            </div>
+            <div id="setup-output"></div>
+            <div class="journey-actions">
+              <button id="continue-to-strategy-btn" class="ghost" type="button">Continue → Strategy</button>
+            </div>
+          </section>
+
+          <section class="card journey-step wide" id="strategy-anchor">
+            <div class="step-heading">
+              <span class="step-number">4</span>
+              <div>
+                <p class="eyebrow">Strategy</p>
+                <h2>Make the first move obvious</h2>
+              </div>
+            </div>
+            <div id="fight-output"></div>
+            <details class="expand-block">
+              <summary>Map support</summary>
+              <div class="inline-options">
+                <label class="check-row">
+                  <input id="spot-filter-proven-only" type="checkbox" />
+                  <span>Proven spots only</span>
+                </label>
+                <label class="check-row">
+                  <input id="spot-rank-history-first" type="checkbox" />
+                  <span>Prioritize historical performance</span>
+                </label>
+              </div>
+              <p id="spot-filter-note" class="muted">Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.</p>
+              <ul id="spots-output" class="list">
+                <li>Spot recommendations pending.</li>
+              </ul>
+            </details>
+            <div class="journey-actions">
+              <button id="continue-to-start-btn" class="ghost" type="button">Continue → Start Trip</button>
+            </div>
+          </section>
+
+          <section class="card journey-step wide" id="start-anchor">
+            <div class="step-heading">
+              <span class="step-number">5</span>
+              <div>
+                <p class="eyebrow">Start Trip</p>
+                <h2>Commit to the session</h2>
+              </div>
+            </div>
+            <div id="session-start-intelligence-output" class="bite-window-panel">
+              <p class="muted">Session-start guidance pending.</p>
+            </div>
+            <div class="action-row">
+              <button id="apply-session-start-suggestions-btn" class="ghost" type="button">Use These Suggestions</button>
+            </div>
+            <p id="session-mode-note" class="muted">Login to start a fishing session.</p>
+            <form id="session-start-form" hidden>
+              <label>
+                Session Name
+                <input name="name" type="text" placeholder="Evening redfish trip" required />
+              </label>
+              <label>
+                Species Focus
+                <input name="speciesFocus" type="text" placeholder="Redfish" />
+              </label>
+              <button type="submit">Start Trip</button>
+            </form>
+            <details class="expand-block">
+              <summary>More context</summary>
+              <div id="intelligence-output" class="bite-window-panel">
+                <p class="muted">Unified recommendation pending.</p>
+              </div>
+              <div id="decision-output" class="bite-window-panel">
+                <p class="muted">Trip decision pending.</p>
+              </div>
+              <div id="trip-prep-output" class="bite-window-panel">
+                <p class="muted">Trip prep pending.</p>
+              </div>
+            </details>
+          </section>
+
+          <section class="card active-stage wide" id="active-trip-anchor">
+            <div class="step-heading">
+              <span class="step-number">6</span>
+              <div>
+                <p class="eyebrow">Active Trip</p>
+                <h2>Trip live</h2>
+              </div>
+            </div>
+            <div class="active-stage-grid">
+              <div class="active-session-stack">
+                <div id="active-session-card" hidden>
+                  <p id="active-session-name"></p>
+                  <p id="active-session-meta" class="muted"></p>
+                  <ul id="active-session-summary" class="kv"></ul>
+                  <div id="active-session-suggestions-wrap" hidden>
+                    <p><strong>Suggested Adjustment</strong></p>
+                    <ul id="active-session-suggestions" class="list"></ul>
+                  </div>
+                  <ul id="active-session-insights" class="list"></ul>
+                  <div class="action-row">
+                    <button id="refresh-session-btn" class="ghost" type="button">Refresh Trip</button>
+                    <button id="end-session-btn" class="ghost" type="button">End Trip</button>
+                  </div>
+                </div>
+              </div>
+              <div class="catch-stack">
+                <p id="catch-auth-note" class="muted">Start a trip before logging catches.</p>
+                <form id="catch-form" hidden>
+                  <label>
+                    Species
+                    <input id="species-input" name="species" list="species-options" type="text" placeholder="Redfish" required />
+                  </label>
+                  <datalist id="species-options"></datalist>
+                  <label>
+                    Weight (lb)
+                    <input name="weight" type="number" step="0.1" min="0" placeholder="4.2" />
+                  </label>
+                  <label>
+                    Bait / Lure
+                    <input name="bait" type="text" placeholder="Paddle tail" />
+                  </label>
+                  <label>
+                    Rig Used
+                    <input id="catch-rig-name" name="rigName" type="text" placeholder="Texas rig" />
+                  </label>
+                  <label>
+                    Bait Family
+                    <select name="baitFamily">
+                      <option value="">Select one</option>
+                      <option value="soft-plastic">Soft Plastic</option>
+                      <option value="hard-bait">Hard Bait</option>
+                      <option value="jig">Jig</option>
+                      <option value="spinner-bladed">Spinner / Bladed</option>
+                      <option value="live-natural">Live / Natural Bait</option>
+                      <option value="cut-bait">Cut Bait</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label>
+                    Landed
+                    <select name="landed">
+                      <option value="true" selected>yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                  <button type="submit">Add Catch</button>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <section class="card review-stage wide" id="logs-anchor">
+            <div class="step-heading">
+              <span class="step-number">7</span>
+              <div>
+                <p class="eyebrow">Review</p>
+                <h2>Review the trip cleanly</h2>
+              </div>
+            </div>
+            <p id="session-history-note" class="muted">Login to review previous outings.</p>
+            <ul id="session-history-list" class="list" hidden></ul>
+            <div id="session-history-detail" hidden>
+              <p class="panel-label">Selected Trip</p>
+              <p id="session-history-detail-name"></p>
+              <p id="session-history-detail-meta" class="muted"></p>
+              <ul id="session-history-detail-summary" class="kv"></ul>
+              <div class="action-row">
+                <button id="share-session-btn" class="ghost" type="button">Share Trip</button>
+              </div>
+              <p id="session-share-note" class="muted"></p>
+              <div id="session-history-detail-suggestions-wrap" hidden>
+                <p><strong>Next Adjustment</strong></p>
+                <ul id="session-history-detail-suggestions" class="list"></ul>
+              </div>
+              <ul id="session-history-detail-insights" class="list"></ul>
+              <div id="session-history-review-wrap" hidden>
+                <p><strong>Review</strong></p>
+                <div id="session-history-review-output" class="bite-window-panel">
+                  <p class="muted">Session review pending.</p>
+                </div>
+              </div>
+              <div id="session-history-comparison-wrap" hidden>
+                <p><strong>Comparison</strong></p>
+                <div id="session-history-comparison-output" class="bite-window-panel">
+                  <p class="muted">Session comparison pending.</p>
+                </div>
+              </div>
+            </div>
+            <details class="expand-block">
+              <summary>Catch log</summary>
+              <ul id="catch-list" class="list"></ul>
+            </details>
+          </section>
+
+          <section class="stats-grid wide" id="stats-anchor">
+            <section class="card">
+              <h2>Stats</h2>
+              <button id="analytics-refresh-btn" class="ghost" type="button" hidden>Refresh Stats</button>
+              <p id="analytics-note" class="muted">Login to view your catch analytics.</p>
+              <ul id="analytics-kpis" class="kv" hidden></ul>
+              <ul id="analytics-insights" class="list" hidden></ul>
+            </section>
+
+            <section class="card">
+              <h2>Fishing Profile</h2>
+              <button id="profile-refresh-btn" class="ghost" type="button" hidden>Refresh Profile</button>
+              <p id="profile-note" class="muted">Login to view your fishing profile.</p>
+              <div id="profile-wrap" hidden>
+                <div id="profile-output" class="bite-window-panel">
+                  <p class="muted">Profile unavailable.</p>
+                </div>
+              </div>
+            </section>
+          </section>
+        </section>
+      </div>
     </main>
+
+    <nav class="bottom-nav" aria-label="Primary">
+      <a href="#logs-anchor">Logs</a>
+      <a href="#map-anchor">Map</a>
+      <a href="#stats-anchor">Stats</a>
+      <a href="#gear-anchor">Gear</a>
+    </nav>
 
     <script src="normalizeConditions.js"></script>
     <script src="app.js"></script>
