@@ -25,7 +25,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await page.locator('select[name="tideStage"]').selectOption('n/a');
   await page.locator('#context-form button[type="submit"]').click();
 
-  await expect(page.locator('#status-banner')).toContainText('Manual mode active.');
+  await expect(page.locator('#status-banner')).toContainText('Manual conditions ready.');
   await expect(page.locator('#setup-output')).toContainText(/rig|setup/i);
 
   const suggestedSessionName = page.locator('#session-start-form input[name="name"]');
@@ -50,7 +50,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await expect(page.locator('#active-session-summary')).toContainText('Current Activity');
 
   await page.locator('#end-session-btn').click();
-  await expect(page.locator('#session-mode-note')).toContainText('No active fishing session.');
+  await expect(page.locator('#session-mode-note')).toContainText('No active trip.');
 });
 
 test('blank coordinates stay invalid instead of degrading into 0,0 requests', async ({ page }) => {
@@ -63,14 +63,14 @@ test('blank coordinates stay invalid instead of degrading into 0,0 requests', as
   await page.locator('#context-form button[type="submit"]').click();
 
   await expect(page.locator('#status-banner')).toContainText(
-    'Enter latitude and longitude before FishDex can estimate local conditions.'
+    'Enter latitude and longitude to analyze local conditions.'
   );
   await expect(page.locator('#score-regime')).toContainText('Location required');
   await expect(page.locator('#bite-window-output')).toContainText(
     'Enter coordinates to generate a bite window outlook.'
   );
   await expect(page.locator('#targets')).toContainText(
-    'No targets generated until a location is entered.'
+    'Add a location to surface likely species.'
   );
 });
 
@@ -88,6 +88,6 @@ test('out-of-range coordinates are rejected before provider calls', async ({ pag
   );
   await expect(page.locator('#score-regime')).toContainText('Location required');
   await expect(page.locator('#targets')).toContainText(
-    'No targets generated until a location is entered.'
+    'Add a location to surface likely species.'
   );
 });

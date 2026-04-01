@@ -203,12 +203,12 @@ function renderSmartInsight() {
   if (currentIntelligenceSnapshot?.recommendedSpecies || currentIntelligenceSnapshot?.recommendedRig) {
     smartInsightOutputEl.innerHTML = `
       <p><strong>Next move:</strong> ${escapeHtml(currentIntelligenceSnapshot.recommendedSpecies || "Set a target species")}</p>
-      <p>Start with ${escapeHtml(currentIntelligenceSnapshot.recommendedRig || "the top rig recommendation")} while activity is ${escapeHtml(String(currentIntelligenceSnapshot.activityLevel || "low").toUpperCase())}.</p>
+      <p>Start with ${escapeHtml(currentIntelligenceSnapshot.recommendedRig || "the top rig")} while activity is ${escapeHtml(String(currentIntelligenceSnapshot.activityLevel || "low").toUpperCase())}.</p>
     `;
     return;
   }
 
-  smartInsightOutputEl.innerHTML = `<p class="muted">Set your spot and refresh conditions to surface the clearest next move.</p>`;
+  smartInsightOutputEl.innerHTML = `<p class="muted">Enter your spot, then analyze conditions to get the clearest next move.</p>`;
 }
 
 function renderHomeTripSummary() {
@@ -273,6 +273,13 @@ function setButtonBusy(buttonEl, busyLabel) {
     buttonEl.disabled = false;
     buttonEl.textContent = originalLabel;
   };
+}
+
+function setLoadingState(elements, isLoading) {
+  elements.forEach((element) => {
+    if (!element) return;
+    element.classList.toggle("is-loading", Boolean(isLoading));
+  });
 }
 
 async function api(path, options = {}) {
@@ -479,7 +486,7 @@ function hasValidCoordinateRange(lat, lng) {
 
 function getCoordinateValidationMessage(input) {
   if (!Number.isFinite(input?.lat) || !Number.isFinite(input?.lng)) {
-    return "Enter latitude and longitude before FishDex can estimate local conditions.";
+    return "Enter latitude and longitude to analyze local conditions.";
   }
 
   if (!hasValidCoordinateRange(input.lat, input.lng)) {
@@ -505,7 +512,7 @@ function locationBasisLabel(conditions) {
   return `Using form coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}${spotName ? ` near ${spotName}` : ""}`;
 }
 
-function renderLocationRequiredState(message = "Enter latitude and longitude before FishDex can estimate local conditions.") {
+function renderLocationRequiredState(message = "Enter latitude and longitude to analyze local conditions.") {
   showStatus(message, "warn");
   snapshotEl.innerHTML = "";
   scoreRegimeEl.textContent = "Location required";
@@ -513,18 +520,18 @@ function renderLocationRequiredState(message = "Enter latitude and longitude bef
   scorePillEl.className = "score-pill score-mixed";
   scoreConfidenceEl.textContent = "LOW";
   scoreConfidenceEl.className = "confidence-badge conf-low";
-  scoreMetaTextEl.textContent = "Location required before environmental scoring can run.";
-  scoreSummaryEl.textContent = "FishDex needs user-entered coordinates before it can estimate local conditions.";
+  scoreMetaTextEl.textContent = "Add coordinates to run the local conditions check.";
+  scoreSummaryEl.textContent = "FishDex needs coordinates before it can read local conditions.";
   scoreWarningWrapEl.hidden = true;
   scoreWarningsEl.innerHTML = "";
   scoreReasonsEl.innerHTML = "<li>Latitude and longitude are required for live local estimates.</li>";
   scoreBreakdownEl.innerHTML = "<li>Enter coordinates first.</li>";
   biteWindowEl.innerHTML = '<p class="muted">Enter coordinates to generate a bite window outlook.</p>';
-  clearListWithMessage(spotsEl, "Spot recommendations pending location.");
-  if (intelligenceEl) intelligenceEl.innerHTML = '<p class="muted">Unified recommendation pending location.</p>';
-  clearListWithMessage(targetsEl, "No targets generated until a location is entered.");
-  setupEl.textContent = "Setup recommendation pending location.";
-  fightEl.textContent = "Fight guidance pending location.";
+  clearListWithMessage(spotsEl, "Add a location to surface the best nearby pattern.");
+  if (intelligenceEl) intelligenceEl.innerHTML = '<p class="muted">Add a location to surface the clearest plan.</p>';
+  clearListWithMessage(targetsEl, "Add a location to surface likely species.");
+  setupEl.textContent = "Add a location to surface the best rig.";
+  fightEl.textContent = "Add a location to surface the best first move.";
   currentRigRecommendation = null;
   currentIntelligenceSnapshot = null;
   renderSmartInsight();
@@ -570,7 +577,7 @@ function renderBiteWindow(outlook, modeLabel) {
   if (!biteWindowEl) return;
 
   if (!outlook) {
-    biteWindowEl.innerHTML = `<p class="muted">Bite window outlook unavailable in ${modeLabel}.</p>`;
+    biteWindowEl.innerHTML = `<p class="muted">Bite window unavailable in ${modeLabel} mode.</p>`;
     return;
   }
 
@@ -584,10 +591,10 @@ function renderBiteWindow(outlook, modeLabel) {
       <span class="activity-pill ${activityClass(outlook.activityLevel)}">${String(outlook.activityLevel || "low").toUpperCase()}</span>
       <strong>Activity Score ${outlook.activityScore ?? 0}</strong>
     </div>
-    <p><strong>Current:</strong> ${currentWindow ? `${currentWindow.start} - ${currentWindow.end} (${currentWindow.type})` : "No major active window detected"}</p>
-    <p><strong>Next:</strong> ${nextWindow ? `${nextWindow.start} - ${nextWindow.end} (${nextWindow.type})` : "No upcoming window detected"}</p>
-    <p><strong>Summary:</strong> ${reasons[0] || "No bite-window explanation returned."}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${warnings.join(" ")}</p>` : ""}
+    <p><strong>Now:</strong> ${currentWindow ? `${currentWindow.start} - ${currentWindow.end} (${currentWindow.type})` : "No strong active window right now."}</p>
+    <p><strong>Next:</strong> ${nextWindow ? `${nextWindow.start} - ${nextWindow.end} (${nextWindow.type})` : "No clear next window yet."}</p>
+    <p><strong>Read:</strong> ${reasons[0] || "No bite-window explanation returned."}</p>
+    ${warnings.length ? `<p><strong>Watch:</strong> ${warnings.join(" ")}</p>` : ""}
   `;
 }
 
@@ -764,13 +771,13 @@ function renderSpotRecommendations(payload, modeLabel) {
   if (!spotsEl) return;
   spotsEl.innerHTML = "";
   if (spotFilterNoteEl) {
-    spotFilterNoteEl.textContent = "Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.";
+    spotFilterNoteEl.textContent = "Environment stays in charge. History only reorders already valid spots.";
     spotFilterNoteEl.className = "muted";
   }
 
   if (!payload) {
     const li = document.createElement("li");
-    li.textContent = `Spot recommendations unavailable in ${modeLabel}.`;
+    li.textContent = `Spot recommendations are unavailable in ${modeLabel} mode.`;
     spotsEl.appendChild(li);
     return;
   }
@@ -787,7 +794,7 @@ function renderSpotRecommendations(payload, modeLabel) {
       ? `History filter active: ${filtering.filterMode.replace(/_/g, " ")} / ${filtering.rankMode.replace(/_/g, " ")}.`
       : filtering.filterMode !== "default" || filtering.rankMode !== "default"
         ? `History filter requested: ${filtering.filterMode.replace(/_/g, " ")} / ${filtering.rankMode.replace(/_/g, " ")}.`
-        : "Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.";
+        : "Environment stays in charge. History only reorders already valid spots.";
     spotFilterNoteEl.textContent = filteringModifier?.reason || appliedLabel;
     spotFilterNoteEl.className = filtering.applied ? "status ok" : warnings.length ? "status warn" : "muted";
   }
@@ -820,14 +827,14 @@ function renderSpotRecommendations(payload, modeLabel) {
       <div class="item-sub">${spot.reason || "No spot explanation returned."}</div>
       ${feedbackLine ? `<div class="item-sub">${feedbackLine}</div>` : ""}
       ${filterBadge}
-      ${feedbackWarnings.length ? `<div class="item-sub"><strong>History warning:</strong> ${feedbackWarnings.join(" ")}</div>` : ""}
+      ${feedbackWarnings.length ? `<div class="item-sub"><strong>Watch:</strong> ${feedbackWarnings.join(" ")}</div>` : ""}
     `;
     spotsEl.appendChild(li);
   });
 
   warnings.forEach((warning) => {
     const li = document.createElement("li");
-    li.innerHTML = `<div class="item-sub"><strong>Warning:</strong> ${warning}</div>`;
+    li.innerHTML = `<div class="item-sub"><strong>Watch:</strong> ${warning}</div>`;
     spotsEl.appendChild(li);
   });
 }
@@ -836,7 +843,7 @@ function renderUnifiedIntelligence(payload, modeLabel) {
   if (!intelligenceEl) return;
 
   if (!payload) {
-    intelligenceEl.innerHTML = `<p class="muted">Unified recommendation unavailable in ${modeLabel}.</p>`;
+    intelligenceEl.innerHTML = `<p class="muted">The combined plan is unavailable in ${modeLabel} mode.</p>`;
     return;
   }
 
@@ -851,12 +858,12 @@ function renderUnifiedIntelligence(payload, modeLabel) {
       <span class="confidence-badge ${confidenceClass(payload.confidence)}">${String(payload.confidence || "low").toUpperCase()}</span>
       <strong>${escapeHtml(payload.targetSpecies || "No target selected")}</strong>
     </div>
-    <p><strong>Spot:</strong> ${escapeHtml(payload.recommendedSpot || "n/a")}</p>
+    <p><strong>Best spot:</strong> ${escapeHtml(payload.recommendedSpot || "n/a")}</p>
     <p><strong>Rig:</strong> ${escapeHtml(payload.recommendedRig || "n/a")}</p>
     <p><strong>Approach:</strong> ${escapeHtml(payload.recommendedApproach || "n/a")}</p>
-    <p><strong>Why:</strong> ${escapeHtml(reasons.join(" ") || "No unified explanation returned.")}</p>
-    <p><strong>Aligned signals:</strong> ${escapeHtml(signalsAligned.join(", ") || "None clearly aligned")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    <p><strong>Why it fits:</strong> ${escapeHtml(reasons.join(" ") || "No unified explanation returned.")}</p>
+    <p><strong>Signals aligned:</strong> ${escapeHtml(signalsAligned.join(", ") || "None clearly aligned")}</p>
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }
 
@@ -864,7 +871,7 @@ function renderTripDecision(payload, modeLabel) {
   if (!decisionEl) return;
 
   if (!payload) {
-    decisionEl.innerHTML = `<p class="muted">Trip decision unavailable in ${modeLabel}.</p>`;
+    decisionEl.innerHTML = `<p class="muted">Trip decision is unavailable in ${modeLabel} mode.</p>`;
     return;
   }
 
@@ -877,10 +884,10 @@ function renderTripDecision(payload, modeLabel) {
       <span class="confidence-badge ${confidenceClass(payload.decision?.confidence)}">${String(payload.decision?.confidence || "low").toUpperCase()}</span>
       <strong>${escapeHtml(String(payload.decision?.goFishing || "conditional").toUpperCase())}</strong>
     </div>
-    <p><strong>Primary reason:</strong> ${escapeHtml(payload.summary?.primaryReason || "No decision summary returned.")}</p>
+    <p><strong>Call:</strong> ${escapeHtml(payload.summary?.primaryReason || "No decision summary returned.")}</p>
     <p><strong>Focus:</strong> Spot ${escapeHtml(payload.recommendedFocus?.spot || "n/a")} | Species ${escapeHtml(payload.recommendedFocus?.species || "n/a")} | Rig ${escapeHtml(payload.recommendedFocus?.rig || "n/a")}</p>
     <p><strong>Signals:</strong> ${escapeHtml(supportingSignals.join(" ") || "No supporting signals returned.")}</p>
-    ${summaryWarnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(summaryWarnings.join(" "))}</p>` : ""}
+    ${summaryWarnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(summaryWarnings.join(" "))}</p>` : ""}
     ${missingSignals.length ? `<p><strong>Missing:</strong> ${escapeHtml(missingSignals.join(", "))}</p>` : ""}
   `;
 }
@@ -889,7 +896,7 @@ function renderTripPrep(payload, modeLabel) {
   if (!tripPrepEl) return;
 
   if (!payload) {
-    tripPrepEl.innerHTML = `<p class="muted">Trip prep unavailable in ${modeLabel}.</p>`;
+    tripPrepEl.innerHTML = `<p class="muted">Trip prep is unavailable in ${modeLabel} mode.</p>`;
     return;
   }
 
@@ -906,14 +913,14 @@ function renderTripPrep(payload, modeLabel) {
       <span class="confidence-badge ${confidenceClass(prep.confidence)}">${escapeHtml(String(prep.confidence || "low").toUpperCase())}</span>
       <strong>${escapeHtml(prep.expectation || "Trip prep available")}</strong>
     </div>
-    <p><strong>Departure window:</strong> ${escapeHtml(prep.recommendedDepartureWindow || "No strong departure window identified.")}</p>
+    <p><strong>Leave:</strong> ${escapeHtml(prep.recommendedDepartureWindow || "No strong departure window identified.")}</p>
     <p><strong>Starting rig:</strong> ${escapeHtml(prep.suggestedStartingRig || "n/a")}</p>
     <p><strong>Target species:</strong> ${escapeHtml(prep.suggestedTargetSpecies || "n/a")}</p>
     <p><strong>Focus spot:</strong> ${escapeHtml(prep.suggestedFocusSpot || "n/a")}</p>
-    <p><strong>Conditions:</strong> ${escapeHtml(prep.conditionsSummary || "No trip-prep conditions summary returned.")}</p>
+    <p><strong>Conditions:</strong> ${escapeHtml(prep.conditionsSummary || "No conditions summary returned.")}</p>
     <p><strong>Checklist:</strong> ${escapeHtml(gear.join(" | ") || "No special gear callouts.")}</p>
-    <p><strong>Prep notes:</strong> ${escapeHtml(notes.join(" | ") || "No additional prep notes returned.")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    <p><strong>Notes:</strong> ${escapeHtml(notes.join(" | ") || "No extra prep notes.")}</p>
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
     ${baseReasons.length ? `<p><strong>Why:</strong> ${escapeHtml(baseReasons.join(" "))}</p>` : ""}
     ${signalsMissing.length ? `<p><strong>Missing:</strong> ${escapeHtml(signalsMissing.join(", "))}</p>` : ""}
   `;
@@ -925,7 +932,7 @@ function renderSessionStartIntelligence(payload, modeLabel) {
   currentSessionStartSuggestion = payload || null;
 
   if (!payload) {
-    sessionStartIntelligenceEl.innerHTML = `<p class="muted">Session-start guidance unavailable in ${modeLabel}.</p>`;
+    sessionStartIntelligenceEl.innerHTML = `<p class="muted">Trip-start guidance is unavailable in ${modeLabel} mode.</p>`;
     return;
   }
 
@@ -943,11 +950,11 @@ function renderSessionStartIntelligence(payload, modeLabel) {
     <p><strong>Species focus:</strong> ${escapeHtml(sessionStart.suggestedSpeciesFocus || "n/a")}</p>
     <p><strong>Starting rig:</strong> ${escapeHtml(sessionStart.suggestedStartingRig || "n/a")}</p>
     <p><strong>Focus spot:</strong> ${escapeHtml(sessionStart.suggestedFocusSpot || "n/a")}</p>
-    <p><strong>Location label:</strong> ${escapeHtml(sessionStart.suggestedLocationLabel || "n/a")}</p>
-    <p><strong>Departure window:</strong> ${escapeHtml(startingContext.departureWindow || "No departure window guidance returned.")}</p>
+    <p><strong>Location:</strong> ${escapeHtml(sessionStart.suggestedLocationLabel || "n/a")}</p>
+    <p><strong>Leave:</strong> ${escapeHtml(startingContext.departureWindow || "No departure window guidance returned.")}</p>
     <p><strong>Expectation:</strong> ${escapeHtml(startingContext.expectation || "No expectation guidance returned.")}</p>
     <p><strong>Trip decision:</strong> ${escapeHtml(startingContext.tripDecision || "No trip decision guidance returned.")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
     ${baseReasons.length ? `<p><strong>Why:</strong> ${escapeHtml(baseReasons.join(" | "))}</p>` : ""}
     ${missingSignals.length ? `<p><strong>Missing:</strong> ${escapeHtml(missingSignals.join(", "))}</p>` : ""}
   `;
@@ -994,9 +1001,9 @@ function renderTargets(results, confidence, accessMode, alerts) {
         </div>
         ${originHtml}
         ${taxonomyNoteHtml}
-        <div class="item-sub">Reason: ${item.reasons.slice(0, 2).join("; ") || "No species reason returned."}</div>
-        <div class="item-sub">Confidence: ${confidence}</div>
-        <div class="item-sub">Access: Work structure edges from ${accessMode}.</div>
+        <div class="item-sub">Why: ${item.reasons.slice(0, 2).join("; ") || "No species reason returned."}</div>
+        <div class="item-sub">Confidence: ${String(confidence || "low").toUpperCase()}</div>
+        <div class="item-sub">Fish it from the ${accessMode} side of the best structure edge.</div>
       `;
       targetsEl.appendChild(li);
     });
@@ -1046,7 +1053,7 @@ function renderSetup(top) {
         ${whyNot.map((item) => `<li><strong>${escapeHtml(item.option)}:</strong> ${escapeHtml(item.reason)}</li>`).join("") || "<li>No alternate valid options were surfaced.</li>"}
       </ul>
       <p><strong>Rod:</strong> ${top.rod.power}, ${top.rod.length}, ${top.rod.action}</p>
-      <p><strong>Main line:</strong> ${top.line.type} ${top.line.strengthLb} lb</p>
+      <p><strong>Line:</strong> ${top.line.type} ${top.line.strengthLb} lb</p>
       <p><strong>Leader:</strong> ${top.leader.type} ${top.leader.strengthLb} lb, ${top.leader.lengthIn} in</p>
       <p><strong>Snag risk:</strong> ${top.snagRisk}</p>
       ${personalizationText}
@@ -1152,9 +1159,9 @@ function renderSuggestionList(listEl, wrapEl, suggestions, options = {}) {
         <strong>${labelTopSuggestion && index === 0 ? `Top suggestion: ${suggestion.message || "Suggested adjustment"}` : suggestion.message || "Suggested adjustment"}</strong>
         <span class="badge">${String(suggestion.priority || "medium").toUpperCase()} PRIORITY</span>
       </div>
-      <div class="item-sub">Confidence: ${String(suggestion.confidence || "medium").toUpperCase()}</div>
+      <div class="item-sub">Confidence ${String(suggestion.confidence || "medium").toUpperCase()}</div>
       <div class="item-sub">${suggestion.reason || "No explanation returned."}</div>
-      ${suggestionWarnings.length ? `<div class="item-sub">Warnings: ${suggestionWarnings.join("; ")}</div>` : ""}
+      ${suggestionWarnings.length ? `<div class="item-sub">Watch: ${suggestionWarnings.join("; ")}</div>` : ""}
     `;
     listEl.appendChild(li);
   });
@@ -1208,13 +1215,13 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!isLoggedIn) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "Login to start a fishing session.";
+    sessionModeNoteEl.textContent = "Log in to start a trip.";
     sessionStartForm.hidden = true;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
     if (catchAuthNote) {
       catchAuthNote.hidden = false;
-      catchAuthNote.textContent = "Login to start a trip and log catches.";
+      catchAuthNote.textContent = "Log in to start a trip and log catches.";
     }
     currentFishingSession = null;
     renderSmartInsight();
@@ -1224,7 +1231,7 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!summary) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "No active fishing session. Start one to attach catches to the outing.";
+    sessionModeNoteEl.textContent = "No active trip. Start one when you're ready to log catches.";
     sessionStartForm.hidden = false;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
@@ -1246,7 +1253,7 @@ function renderFishingSession(summary, isLoggedIn) {
   if (catchForm) catchForm.hidden = false;
   if (catchAuthNote) {
     catchAuthNote.hidden = false;
-    catchAuthNote.textContent = "Trip live. Add the next catch as soon as it happens.";
+    catchAuthNote.textContent = "Trip live. Log each catch as it happens.";
   }
   if (refreshSessionBtn) refreshSessionBtn.hidden = false;
   if (endSessionBtn) endSessionBtn.hidden = false;
@@ -1256,7 +1263,7 @@ function renderFishingSession(summary, isLoggedIn) {
   renderSuggestionList(activeSessionSuggestionsEl, activeSessionSuggestionsWrapEl, summary.adaptiveSuggestions || [], {
     labelTopSuggestion: true,
   });
-  renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No session insights available yet.");
+  renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
   renderSmartInsight();
   renderHomeTripSummary();
 }
@@ -1338,13 +1345,19 @@ function renderSessionReview(review) {
       <span class="confidence-badge ${confidenceClass(review.review?.confidence)}">${escapeHtml(String(review.review?.confidence || "low").toUpperCase())}</span>
       <strong>${escapeHtml(String(review.review?.overallOutcome || "mixed").toUpperCase())}</strong>
     </div>
-    <p><strong>Expectation match:</strong> ${escapeHtml(String(review.review?.expectationMatch || "matched").toUpperCase())}</p>
+    <p><strong>Expectation:</strong> ${escapeHtml(String(review.review?.expectationMatch || "matched").toUpperCase())}</p>
     <p><strong>Total catches:</strong> ${escapeHtml(String(review.review?.totalCatches ?? review.review?.landedCount ?? "n/a"))}</p>
     <p><strong>Summary:</strong> ${escapeHtml(review.review?.summary || "No session review summary returned.")}</p>
-    <p><strong>What worked:</strong> ${escapeHtml(whatWorked.join(" | ") || "No strong success pattern was confirmed.")}</p>
-    <p><strong>What didn't work:</strong> ${escapeHtml(whatDidNotWork.join(" | ") || "No clear failure pattern was isolated.")}</p>
+    <p><strong>What worked:</strong></p>
+    <ul class="list compact-list">
+      ${(whatWorked.length ? whatWorked : ["No strong success pattern was confirmed."]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+    <p><strong>What didn't:</strong></p>
+    <ul class="list compact-list">
+      ${(whatDidNotWork.length ? whatDidNotWork : ["No clear failure pattern was isolated."]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
     <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next adjustment was isolated.")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }
 
@@ -1372,7 +1385,7 @@ function renderSessionComparison(comparison) {
     <p><strong>Summary:</strong> ${escapeHtml(comparison.comparison?.summary || "No session comparison summary returned.")}</p>
     <p><strong>Deltas:</strong> ${escapeHtml(`Catches ${Number(deltas.catchesDelta || 0) >= 0 ? "+" : ""}${Number(deltas.catchesDelta || 0)}, Duration ${Number(deltas.durationDeltaMinutes || 0) >= 0 ? "+" : ""}${Number(deltas.durationDeltaMinutes || 0)}m, Top rig match ${deltas.topRigMatch ? "yes" : "no"}, Top species match ${deltas.topSpeciesMatch ? "yes" : "no"}`)}</p>
     <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No clear recent-session comparison pattern was isolated.")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }
 
@@ -1388,7 +1401,7 @@ function renderSessionHistoryDetail(summary, review = null, comparison = null) {
     buildSessionSummaryItems(summary, { includeCurrentContext: false })
   );
   renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
-  renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insights available yet.");
+  renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
   renderSessionReview(review);
   renderSessionComparison(comparison);
   setSessionShareNote("Create a read-only public link if you want to share this completed trip.");
@@ -1435,7 +1448,7 @@ function renderSessionHistory(sessions, isLoggedIn) {
     return;
   }
 
-  sessionHistoryNoteEl.textContent = "Ended sessions appear here newest first. Open one to load its existing deterministic trip summary.";
+  sessionHistoryNoteEl.textContent = "Ended trips appear here newest first. Open one to review what happened.";
   sessionHistoryListEl.hidden = false;
 
   currentSessionHistory.forEach((session) => {
@@ -2046,12 +2059,26 @@ function renderScore(scorePayload) {
 async function refreshIntelligence() {
   const input = parseContext();
   const coordinateValidationMessage = getCoordinateValidationMessage(input);
+  const loadingTargets = [
+    biteWindowEl,
+    spotsEl,
+    intelligenceEl,
+    decisionEl,
+    tripPrepEl,
+    sessionStartIntelligenceEl,
+    targetsEl,
+    setupEl,
+    fightEl,
+  ];
 
   if (coordinateValidationMessage) {
     renderLocationRequiredState(coordinateValidationMessage);
     if (!currentFishingSession) syncSessionStartDefaults();
     return;
   }
+
+  setLoadingState(loadingTargets, true);
+  showStatus("Analyzing conditions...", "ok");
 
   let conditions;
   let modeLabel = "manual";
@@ -2060,15 +2087,15 @@ async function refreshIntelligence() {
     try {
       conditions = await getLiveConditions(input);
       modeLabel = "live";
-      showStatus("Live provider fetch succeeded.", "ok");
+      showStatus("Live conditions ready.", "ok");
     } catch (error) {
       conditions = window.FishDexNormalize.normalizeManual(input);
       modeLabel = "manual fallback";
-      showStatus(`Live fetch failed, fallback to manual mode: ${error.message}`, "warn");
+      showStatus(`Live lookup failed. Using manual conditions instead: ${error.message}`, "warn");
     }
   } else {
     conditions = window.FishDexNormalize.normalizeManual(input);
-    showStatus("Manual mode active.", "ok");
+    showStatus("Manual conditions ready.", "ok");
   }
 
   const regime = classifyRegime(conditions);
@@ -2185,6 +2212,8 @@ async function refreshIntelligence() {
     renderScore(scorePayload);
   } catch {
     renderScore(null);
+  } finally {
+    setLoadingState(loadingTargets, false);
   }
 }
 
@@ -2226,14 +2255,14 @@ function renderAnalytics(summary, isLoggedIn) {
   }
 
   if (!summary) {
-    analyticsNoteEl.textContent = "Analytics unavailable right now.";
+    analyticsNoteEl.textContent = "Stats are unavailable right now.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
     return;
   }
 
-  analyticsNoteEl.textContent = "Summary from your logged catches.";
+  analyticsNoteEl.textContent = "A quick read from your logged catches.";
   analyticsKpisEl.hidden = false;
   analyticsInsightsEl.hidden = false;
   if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
@@ -2257,7 +2286,7 @@ function renderAnalytics(summary, isLoggedIn) {
   const insights = Array.isArray(summary.insights) ? summary.insights : [];
   if (!insights.length) {
     const li = document.createElement("li");
-    li.textContent = "No insights available yet.";
+    li.textContent = "No clear pattern yet.";
     analyticsInsightsEl.appendChild(li);
     return;
   }
@@ -2281,7 +2310,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   }
 
   if (!profilePayload) {
-    profileNoteEl.textContent = "Fishing profile unavailable right now.";
+    profileNoteEl.textContent = "Fishing profile is unavailable right now.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = false;
@@ -2294,7 +2323,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   const patterns = Array.isArray(profilePayload.patterns) ? profilePayload.patterns : [];
   const warnings = Array.isArray(profilePayload.warnings) ? profilePayload.warnings : [];
 
-  profileNoteEl.textContent = "User-level summary from completed sessions, reviews, comparisons, and analytics.";
+  profileNoteEl.textContent = "A read-only profile built from your completed trips and catch history.";
   profileWrapEl.hidden = false;
   if (profileRefreshBtn) profileRefreshBtn.hidden = false;
   profileOutputEl.innerHTML = `
@@ -2306,10 +2335,10 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
     <p><strong>Consistency:</strong> ${escapeHtml(String(profilePayload.profile?.consistency || "low").toUpperCase())}</p>
     <p><strong>Summary:</strong> ${escapeHtml(profilePayload.profile?.summary || "No profile summary returned.")}</p>
     <p><strong>Strengths:</strong> ${escapeHtml(strengths.join(" | ") || "No repeatable strength is confirmed yet.")}</p>
-    <p><strong>Tendencies:</strong> ${escapeHtml(tendencies.join(" | ") || "No stable user-level tendency is confirmed yet.")}</p>
-    <p><strong>Improvement areas:</strong> ${escapeHtml(improvementAreas.join(" | ") || "No repeatable improvement area is isolated yet.")}</p>
+    <p><strong>Tendencies:</strong> ${escapeHtml(tendencies.join(" | ") || "No stable tendency is confirmed yet.")}</p>
+    <p><strong>Improve next:</strong> ${escapeHtml(improvementAreas.join(" | ") || "No repeatable improvement area is isolated yet.")}</p>
     <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No cross-session pattern is isolated yet.")}</p>
-    ${warnings.length ? `<p><strong>Warnings:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }
 
@@ -2537,9 +2566,16 @@ logoutBtn.addEventListener("click", async () => {
   }
 });
 
-contextForm.addEventListener("submit", (event) => {
+contextForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  refreshIntelligence();
+  const submitBtn = contextForm.querySelector('button[type="submit"]');
+  const restoreButton = setButtonBusy(submitBtn, "Analyzing...");
+
+  try {
+    await refreshIntelligence();
+  } finally {
+    restoreButton();
+  }
 });
 
 catchForm.addEventListener("submit", async (event) => {
@@ -2872,12 +2908,22 @@ if (scoreBreakdownToggleEl) {
 }
 if (analyticsRefreshBtn) {
   analyticsRefreshBtn.addEventListener("click", async () => {
-    await refreshAnalytics();
+    const restoreButton = setButtonBusy(analyticsRefreshBtn, "Refreshing...");
+    try {
+      await refreshAnalytics();
+    } finally {
+      restoreButton();
+    }
   });
 }
 if (profileRefreshBtn) {
   profileRefreshBtn.addEventListener("click", async () => {
-    await refreshFishingProfile();
+    const restoreButton = setButtonBusy(profileRefreshBtn, "Refreshing...");
+    try {
+      await refreshFishingProfile();
+    } finally {
+      restoreButton();
+    }
   });
 }
   if (savedSpotsSelectEl) {

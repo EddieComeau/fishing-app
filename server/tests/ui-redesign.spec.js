@@ -29,10 +29,12 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.locator('select[name="tideStage"]').selectOption('n/a');
   await page.locator('#context-form button[type="submit"]').click();
 
+  await expect(page.locator('#status-banner')).toContainText('Manual conditions ready.');
   await expect(page.locator('#conditions-anchor')).toContainText('Read the water first');
   await expect(page.locator('#score-reasons li')).toHaveCount(3);
   await expect(page.locator('#species-anchor')).toContainText('Focus the likely bite');
   await expect(page.locator('#targets')).toContainText('Primary:');
+  await expect(page.locator('#targets')).toContainText('Why:');
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
   await expect(page.locator('#setup-output')).toContainText('Why Not:');
   await expect(page.locator('#strategy-anchor')).toContainText('Make the first move obvious');

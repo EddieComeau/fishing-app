@@ -39,7 +39,7 @@ test('completed session detail shows a read-only session review and restricts re
   await expect(page.locator('#session-history-detail')).toBeVisible();
   await expect(page.locator('#session-history-review-wrap')).toBeVisible();
   await expect(page.locator('#session-history-review-output')).toContainText(/GOOD|MIXED|POOR/i);
-  await expect(page.locator('#session-history-review-output')).toContainText('Expectation match:');
+  await expect(page.locator('#session-history-review-output')).toContainText('Expectation:');
   await expect(page.locator('#session-history-review-output')).toContainText('Summary:');
   await expect(page.locator('#session-history-review-output')).toContainText('What worked:');
 
