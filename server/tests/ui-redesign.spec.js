@@ -7,9 +7,11 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  await expect(page.locator('h1')).toContainText('ReelLog');
+  await expect(page.locator('h1')).toContainText('FishDex');
+  await expect(page).toHaveTitle('FishDex');
   await expect(page.locator('#primary-start-fishing-btn')).toBeVisible();
   await expect(page.locator('#primary-start-fishing-btn')).toHaveCSS('min-height', '52px');
+  await expect(page.locator('.hero-copy')).toContainText('See the conditions, choose the species, fish the right rig');
   await expect(page.locator('.bottom-nav')).toContainText('Logs');
   await expect(page.locator('.bottom-nav')).toContainText('Map');
   await expect(page.locator('.bottom-nav')).toContainText('Stats');
@@ -40,6 +42,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
   await expect(page.locator('#setup-output')).toContainText('Why Not:');
   await expect(page.locator('#strategy-anchor')).toContainText('Make the first move obvious');
+  await expect(page.locator('#stats-anchor')).toContainText('Improve Your Catch Rate');
 
   await page.locator('#session-start-form input[name="name"]').fill('UI Flow Trip');
   await page.locator('#session-start-form input[name="speciesFocus"]').fill('Bass');

@@ -244,7 +244,7 @@ function renderHomeTripSummary() {
       <p>${escapeHtml(`${lastTrip.catches ?? 0} catches • ${lastTrip.topRig || "No top rig"} • ${lastTrip.sessionDuration || "n/a"}`)}</p>
     `;
   } else {
-    homeTripOutputEl.innerHTML = `<p class="muted">No completed trip yet. Build the plan, then start your first session.</p>`;
+    homeTripOutputEl.innerHTML = `<p class="muted">No completed trip yet. Start fishing to see what FishDex would do before the first cast.</p>`;
   }
 
   if (primaryStartFishingBtn) primaryStartFishingBtn.textContent = "Start Fishing";
@@ -2336,7 +2336,7 @@ function renderAnalytics(summary, isLoggedIn) {
     return;
   }
 
-  analyticsNoteEl.textContent = "A quick read from your logged catches.";
+  analyticsNoteEl.textContent = "A quick read on what is helping you catch more fish.";
   analyticsKpisEl.hidden = false;
   analyticsInsightsEl.hidden = false;
   if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
@@ -2397,7 +2397,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   const patterns = Array.isArray(profilePayload.patterns) ? profilePayload.patterns : [];
   const warnings = Array.isArray(profilePayload.warnings) ? profilePayload.warnings : [];
 
-  profileNoteEl.textContent = "A read-only profile built from your completed trips and catch history.";
+  profileNoteEl.textContent = "A read-only profile that shows what works, where you are consistent, and what to improve next.";
   profileWrapEl.hidden = false;
   if (profileRefreshBtn) profileRefreshBtn.hidden = false;
   profileOutputEl.innerHTML = `

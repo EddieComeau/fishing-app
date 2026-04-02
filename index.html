@@ -3,15 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ReelLog</title>
+    <title>FishDex</title>
+    <meta
+      name="description"
+      content="FishDex is a fishing decision system that helps you choose what to do before you cast with real-time guidance, clear rig reasoning, and session review."
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="app-header">
       <div class="brand-lockup">
-        <p class="eyebrow">Structured Decision Product</p>
-        <h1>ReelLog</h1>
-        <p>FishDex intelligence, rebuilt around one clear path from launch to review.</p>
+        <p class="eyebrow">Fishing Intelligence System</p>
+        <h1>FishDex</h1>
+        <p>A fishing decision system that helps you choose what to do before you cast.</p>
       </div>
       <div id="session-panel" class="session-pill" hidden>
         <p id="session-user"></p>
@@ -22,22 +26,22 @@
     <main class="app-shell">
       <section class="home-hero card wide" id="home-top">
         <div class="hero-main">
-          <p class="eyebrow">One dominant journey</p>
+          <p class="eyebrow">Fish smarter with real-time guidance, not guesswork</p>
           <h2>Start Fishing</h2>
-          <p class="hero-copy">Move from conditions to species, rig, strategy, trip start, catch logging, and review without competing detours.</p>
+          <p class="hero-copy">See the conditions, choose the species, fish the right rig, and make the next move with more confidence.</p>
           <div class="hero-actions">
             <button id="primary-start-fishing-btn" class="primary-cta" type="button">Start Fishing</button>
           </div>
         </div>
         <div class="hero-side">
           <div class="mini-panel">
-            <p class="panel-label">Smart Insight</p>
+            <p class="panel-label">Next Decision</p>
             <div id="smart-insight-output" class="bite-window-panel">
               <p class="muted">Set your conditions to get a clear next step.</p>
             </div>
           </div>
           <div class="mini-panel">
-            <p class="panel-label">Trip Focus</p>
+            <p class="panel-label">Recent Trip</p>
             <div id="home-trip-output" class="bite-window-panel">
               <p class="muted">No active trip yet. Build your plan, then start your session.</p>
             </div>
@@ -107,10 +111,10 @@
               <span class="step-number">0</span>
               <div>
                 <p class="eyebrow">Map</p>
-                <h2>Fishing Context</h2>
+              <h2>Fishing Context</h2>
               </div>
             </div>
-            <p class="muted">Set the spot and local conditions once, then move through the guided sequence.</p>
+            <p class="muted">Set the spot once, then let FishDex guide the next decision from conditions to review.</p>
             <form id="context-form">
               <div class="action-row">
                 <button id="use-my-location-btn" class="ghost" type="button">Use My Location</button>
@@ -480,7 +484,7 @@
 
           <section class="stats-grid wide" id="stats-anchor">
             <section class="card">
-              <h2>Stats</h2>
+              <h2>Catch Stats</h2>
               <button id="analytics-refresh-btn" class="ghost" type="button" hidden>Refresh Stats</button>
               <p id="analytics-note" class="muted">Login to view your catch analytics.</p>
               <ul id="analytics-kpis" class="kv" hidden></ul>
@@ -495,6 +499,10 @@
                 <div id="profile-output" class="bite-window-panel">
                   <p class="muted">Profile pending.</p>
                 </div>
+              </div>
+              <div class="expand-block">
+                <p class="panel-label">Improve Your Catch Rate</p>
+                <p class="muted">Understand why fish did not bite, compare trips, track what works, and build confidence in your decisions.</p>
               </div>
             </section>
           </section>
