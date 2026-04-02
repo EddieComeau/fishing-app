@@ -1,4 +1,5 @@
 const { recommendRig } = require('../services/rig.service');
+const { checkRigSetup } = require('../services/rigCheck.service');
 
 async function recommendRigHandler(req, res) {
   try {
@@ -11,6 +12,16 @@ async function recommendRigHandler(req, res) {
   }
 }
 
+async function checkRigHandler(req, res) {
+  try {
+    const result = checkRigSetup(req.body || {});
+    return res.json(result);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Rig check failed' });
+  }
+}
+
 module.exports = {
   recommendRigHandler,
+  checkRigHandler,
 };

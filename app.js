@@ -78,6 +78,13 @@ const sessionStartIntelligenceEl = document.getElementById("session-start-intell
 const applySessionStartSuggestionsBtn = document.getElementById("apply-session-start-suggestions-btn");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
+const rigCheckWrapEl = document.getElementById("rig-check-wrap");
+const rigCheckForm = document.getElementById("rig-check-form");
+const rigCheckRigEl = document.getElementById("rig-check-rig");
+const rigCheckHookEl = document.getElementById("rig-check-hook");
+const rigCheckWeightEl = document.getElementById("rig-check-weight");
+const rigCheckBaitEl = document.getElementById("rig-check-bait");
+const rigCheckOutputEl = document.getElementById("rig-check-output");
 const fightEl = document.getElementById("fight-output");
 
 const authStatusEl = document.getElementById("auth-status");
@@ -418,6 +425,38 @@ function focusCatchSpeciesInput() {
     speciesInputEl.focus();
     speciesInputEl.select();
   });
+}
+
+function syncRigCheckDefaults(topRigName = currentRigRecommendation?.rigName || currentIntelligenceSnapshot?.recommendedRig) {
+  if (!rigCheckRigEl) return;
+  if (!String(rigCheckRigEl.value || "").trim() && topRigName) {
+    rigCheckRigEl.value = topRigName;
+  }
+}
+
+function renderRigCheckResult(result = null) {
+  if (!rigCheckOutputEl) return;
+
+  if (!result) {
+    rigCheckOutputEl.innerHTML = `<p class="muted">Select your rig details to confirm the setup.</p>`;
+    return;
+  }
+
+  const matches = Array.isArray(result.explanation?.matches) ? result.explanation.matches : [];
+  const mismatches = Array.isArray(result.explanation?.mismatches) ? result.explanation.mismatches : [];
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  const fixes = Array.isArray(result.fixes) ? result.fixes : [];
+
+  rigCheckOutputEl.innerHTML = `
+    <div class="activity-strip">
+      <span class="confidence-badge ${confidenceClass(result.confidence)}">${escapeHtml(String(result.confidence || "low").toUpperCase())}</span>
+      <strong>${escapeHtml(String(result.status || "needs_adjustment").replace(/_/g, " ").toUpperCase())}</strong>
+    </div>
+    <p><strong>What matches:</strong> ${escapeHtml(matches.join(" | ") || "No confirmed match yet.")}</p>
+    <p><strong>Issues:</strong> ${escapeHtml(issues.join(" | ") || "No setup issues were found.")}</p>
+    <p><strong>Fix:</strong> ${escapeHtml(fixes.join(" | ") || "No changes needed.")}</p>
+    ${mismatches.length ? `<p><strong>Why:</strong> ${escapeHtml(mismatches.join(" | "))}</p>` : ""}
+  `;
 }
 
 async function api(path, options = {}) {
@@ -1151,6 +1190,8 @@ function renderSetup(top) {
   if (!top) {
     setupEl.textContent = "No setup recommendation available.";
     currentRigRecommendation = null;
+    if (rigCheckRigEl) rigCheckRigEl.value = "";
+    renderRigCheckResult(null);
     return;
   }
 
@@ -1176,6 +1217,7 @@ function renderSetup(top) {
       : "";
     const whyBullets = Array.isArray(top.reasons) ? top.reasons.slice(0, 3) : [];
     const whyNot = Array.isArray(top.explanation?.whyNot) ? top.explanation.whyNot.slice(0, 3) : [];
+    syncRigCheckDefaults(top.rigName);
     setupEl.innerHTML = `
       <div class="activity-strip">
         <strong>${escapeHtml(top.rigName)}</strong>
@@ -1200,6 +1242,7 @@ function renderSetup(top) {
   }
 
   currentRigRecommendation = null;
+  syncRigCheckDefaults(top.rigs);
   setupEl.innerHTML = `
     <p><strong>Primary:</strong> ${top.rigs}</p>
     <p><strong>Rod:</strong> Medium-heavy fast action (7'0"-7'3")</p>
@@ -2722,6 +2765,42 @@ contextForm.addEventListener("submit", async (event) => {
   }
 });
 
+if (rigCheckForm) {
+  rigCheckForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const submitBtn = rigCheckForm.querySelector('button[type="submit"]');
+    const restoreButton = setButtonBusy(submitBtn, "Checking...");
+    const payload = {
+      rig: String(rigCheckRigEl?.value || "").trim(),
+      hook: String(rigCheckHookEl?.value || "").trim(),
+      weight: String(rigCheckWeightEl?.value || "").trim(),
+      bait: String(rigCheckBaitEl?.value || "").trim(),
+    };
+
+    try {
+      const result = await api("/rig/check", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      renderRigCheckResult(result);
+    } catch (error) {
+      renderRigCheckResult({
+        status: "needs_adjustment",
+        confidence: "low",
+        issues: [friendlyErrorMessage(error, "Unable to check this rig right now.")],
+        fixes: ["Confirm the rig name and try again."],
+        explanation: {
+          matches: [],
+          mismatches: [],
+        },
+      });
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
 catchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -3160,6 +3239,8 @@ if (continueToStartBtn) {
 }
 
 maybeShowOnboarding();
+renderRigCheckResult(null);
+syncRigCheckDefaults();
 updateTideStationVisibility();
 updateLocationAssistForContext();
 populateSavedSpotFieldsFromContext();

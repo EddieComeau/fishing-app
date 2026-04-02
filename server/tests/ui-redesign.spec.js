@@ -54,6 +54,13 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#targets')).toContainText('Why:');
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
   await expect(page.locator('#setup-output')).toContainText('Why Not:');
+  await page.locator('#rig-check-rig').selectOption('Texas rig');
+  await page.locator('#rig-check-hook').selectOption('offset worm hook');
+  await page.locator('#rig-check-weight').selectOption('bullet weight');
+  await page.locator('#rig-check-bait').selectOption('soft plastic worm');
+  await page.locator('#rig-check-submit-btn').click();
+  await expect(page.locator('#rig-check-output')).toContainText('VALID');
+  await expect(page.locator('#rig-check-output')).toContainText('Hook matches');
   await expect(page.locator('#strategy-anchor')).toContainText('Make the first move obvious');
   await expect(page.locator('#stats-anchor')).toContainText('Improve Your Catch Rate');
 

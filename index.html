@@ -305,6 +305,74 @@
               </div>
             </div>
             <div id="setup-output"></div>
+            <div id="rig-check-wrap" class="expand-block">
+              <p class="panel-label">Check Your Rig</p>
+              <p class="muted">Compare what you tied against the recommended setup.</p>
+              <form id="rig-check-form">
+                <label>
+                  Rig
+                  <select id="rig-check-rig" name="rig">
+                    <option value="">Select a rig</option>
+                    <option value="Texas rig">Texas rig</option>
+                    <option value="Spinnerbait">Spinnerbait</option>
+                    <option value="Drop shot">Drop shot</option>
+                    <option value="Wacky rig">Wacky rig</option>
+                    <option value="Jighead + paddle tail">Jighead + paddle tail</option>
+                    <option value="Popping cork">Popping cork</option>
+                    <option value="Fish finder rig">Fish finder rig</option>
+                    <option value="Surf high-low rig">Surf high-low rig</option>
+                  </select>
+                </label>
+                <div class="rig-check-grid">
+                  <label>
+                    Hook
+                    <select id="rig-check-hook" name="hook">
+                      <option value="">Select hook</option>
+                      <option value="offset worm hook">Offset worm hook</option>
+                      <option value="ewg hook">EWG hook</option>
+                      <option value="drop shot hook">Drop shot hook</option>
+                      <option value="wacky hook">Wacky hook</option>
+                      <option value="jighead hook">Jighead hook</option>
+                      <option value="circle hook">Circle hook</option>
+                      <option value="double dropper hooks">Double dropper hooks</option>
+                    </select>
+                  </label>
+                  <label>
+                    Weight
+                    <select id="rig-check-weight" name="weight">
+                      <option value="">Select weight</option>
+                      <option value="bullet weight">Bullet weight</option>
+                      <option value="integrated spinnerbait head">Integrated spinnerbait head</option>
+                      <option value="drop shot weight">Drop shot weight</option>
+                      <option value="unweighted">Unweighted</option>
+                      <option value="nail weight">Nail weight</option>
+                      <option value="jighead">Jighead</option>
+                      <option value="popping cork">Popping cork float</option>
+                      <option value="sliding sinker">Sliding sinker</option>
+                      <option value="pyramid weight">Pyramid weight</option>
+                    </select>
+                  </label>
+                  <label>
+                    Bait
+                    <select id="rig-check-bait" name="bait">
+                      <option value="">Select bait</option>
+                      <option value="soft plastic worm">Soft plastic worm</option>
+                      <option value="soft plastic trailer">Soft plastic trailer</option>
+                      <option value="small finesse soft plastic">Small finesse soft plastic</option>
+                      <option value="stick worm">Stick worm</option>
+                      <option value="paddle tail soft plastic">Paddle tail soft plastic</option>
+                      <option value="live bait">Live bait</option>
+                      <option value="cut bait">Cut bait</option>
+                      <option value="natural bait">Natural bait</option>
+                    </select>
+                  </label>
+                </div>
+                <button id="rig-check-submit-btn" class="ghost" type="submit">Check Rig</button>
+              </form>
+              <div id="rig-check-output" class="bite-window-panel">
+                <p class="muted">Select your rig details to confirm the setup.</p>
+              </div>
+            </div>
             <div class="journey-actions">
               <button id="continue-to-strategy-btn" class="ghost" type="button">Continue → Strategy</button>
             </div>
