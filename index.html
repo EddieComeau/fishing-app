@@ -11,6 +11,19 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="onboarding-overlay" class="onboarding-overlay" hidden>
+      <div class="onboarding-card">
+        <p class="eyebrow">Welcome To FishDex</p>
+        <div id="onboarding-output" class="bite-window-panel">
+          <p><strong>FishDex helps you decide what to do before you cast.</strong></p>
+          <p>Get a real-time plan based on your conditions.</p>
+        </div>
+        <div class="onboarding-actions">
+          <button id="onboarding-skip-btn" class="ghost" type="button">Skip</button>
+          <button id="onboarding-next-btn" class="primary-cta" type="button">Next</button>
+        </div>
+      </div>
+    </div>
     <header class="app-header">
       <div class="brand-lockup">
         <p class="eyebrow">Fishing Intelligence System</p>
@@ -37,13 +50,13 @@
           <div class="mini-panel">
             <p class="panel-label">Next Decision</p>
             <div id="smart-insight-output" class="bite-window-panel">
-              <p class="muted">Set your conditions to get a clear next step.</p>
+              <p class="muted">Get a real-time plan based on your conditions.</p>
             </div>
           </div>
           <div class="mini-panel">
             <p class="panel-label">Recent Trip</p>
             <div id="home-trip-output" class="bite-window-panel">
-              <p class="muted">No active trip yet. Build your plan, then start your session.</p>
+              <p class="muted">Start Fishing to get your first recommendation in seconds.</p>
             </div>
           </div>
         </div>
@@ -242,16 +255,16 @@
               </div>
             </div>
             <div id="status-banner" class="status" hidden></div>
-            <h3 id="score-regime">Regime pending...</h3>
+            <h3 id="score-regime">Set your spot to begin</h3>
             <div class="score-meta">
               <span id="score-pill" class="score-pill score-mixed">Score --</span>
               <span id="score-confidence" class="confidence-badge conf-low">LOW</span>
             </div>
             <div id="bite-window-output" class="bite-window-panel">
-              <p class="muted">Bite window outlook pending.</p>
+              <p class="muted">Add your spot to see when the bite looks strongest.</p>
             </div>
-            <p id="score-meta-text" class="muted">Scoring metadata pending.</p>
-            <div id="score-summary" class="status">Score explanation pending.</div>
+            <p id="score-meta-text" class="muted">We will show the key signals after your first refresh.</p>
+            <div id="score-summary" class="status">Refresh conditions to get the first plan.</div>
             <p class="panel-label">Top signals</p>
             <ul id="score-reasons" class="list compact-list"></ul>
             <button id="score-breakdown-toggle" class="ghost" type="button">Expand for details</button>
@@ -320,7 +333,7 @@
               </div>
               <p id="spot-filter-note" class="muted">Environmental spot logic stays primary. These options only filter or reorder already-valid spot outputs.</p>
               <ul id="spots-output" class="list">
-                <li>Spot recommendations pending.</li>
+                <li>Add your spot to surface the best place to start.</li>
               </ul>
             </details>
             <div class="journey-actions">
@@ -337,7 +350,7 @@
               </div>
             </div>
             <div id="session-start-intelligence-output" class="bite-window-panel">
-              <p class="muted">Session-start guidance pending.</p>
+              <p class="muted">Refresh conditions to build your trip plan.</p>
             </div>
             <div class="action-row">
               <button id="apply-session-start-suggestions-btn" class="ghost" type="button">Use These Suggestions</button>
@@ -357,13 +370,13 @@
             <details class="expand-block">
               <summary>More context</summary>
               <div id="intelligence-output" class="bite-window-panel">
-                <p class="muted">Combined plan pending.</p>
+                <p class="muted">Your full decision summary appears here after the first refresh.</p>
               </div>
               <div id="decision-output" class="bite-window-panel">
-                <p class="muted">Trip decision pending.</p>
+                <p class="muted">FishDex will tell you if this looks worth fishing right now.</p>
               </div>
               <div id="trip-prep-output" class="bite-window-panel">
-                <p class="muted">Trip prep pending.</p>
+                <p class="muted">Trip prep appears here once your conditions are set.</p>
               </div>
             </details>
           </section>
@@ -394,7 +407,7 @@
                 </div>
               </div>
               <div class="catch-stack">
-                <p id="catch-auth-note" class="muted">Start a trip before logging catches.</p>
+                <p id="catch-auth-note" class="muted">Start a trip to begin tracking what works.</p>
                 <form id="catch-form" hidden>
                   <label>
                     Species
@@ -447,7 +460,7 @@
                 <h2>Review the trip cleanly</h2>
               </div>
             </div>
-            <p id="session-history-note" class="muted">Login to review previous outings.</p>
+            <p id="session-history-note" class="muted">Start Fishing, finish a trip, and your review will show up here.</p>
             <ul id="session-history-list" class="list" hidden></ul>
             <div id="session-history-detail" hidden>
               <p class="panel-label">Selected Trip</p>
@@ -466,13 +479,13 @@
               <div id="session-history-review-wrap" hidden>
                 <p><strong>Review</strong></p>
                 <div id="session-history-review-output" class="bite-window-panel">
-                  <p class="muted">Trip review pending.</p>
+                  <p class="muted">Finish a trip to see what worked and what to change next.</p>
                 </div>
               </div>
               <div id="session-history-comparison-wrap" hidden>
                 <p><strong>Comparison</strong></p>
                 <div id="session-history-comparison-output" class="bite-window-panel">
-                  <p class="muted">Trip comparison pending.</p>
+                  <p class="muted">Trip comparison appears after you build a little history.</p>
                 </div>
               </div>
             </div>
@@ -486,7 +499,7 @@
             <section class="card">
               <h2>Catch Stats</h2>
               <button id="analytics-refresh-btn" class="ghost" type="button" hidden>Refresh Stats</button>
-              <p id="analytics-note" class="muted">Login to view your catch analytics.</p>
+              <p id="analytics-note" class="muted">Your insights will appear after your first few catches.</p>
               <ul id="analytics-kpis" class="kv" hidden></ul>
               <ul id="analytics-insights" class="list" hidden></ul>
             </section>
@@ -494,10 +507,10 @@
             <section class="card">
               <h2>Fishing Profile</h2>
               <button id="profile-refresh-btn" class="ghost" type="button" hidden>Refresh Profile</button>
-              <p id="profile-note" class="muted">Login to view your fishing profile.</p>
+              <p id="profile-note" class="muted">Your profile appears once FishDex has enough trip history to read your patterns.</p>
               <div id="profile-wrap" hidden>
                 <div id="profile-output" class="bite-window-panel">
-                  <p class="muted">Profile pending.</p>
+                  <p class="muted">Fish a few trips and FishDex will surface your profile here.</p>
                 </div>
               </div>
               <div class="expand-block">

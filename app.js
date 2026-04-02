@@ -10,6 +10,10 @@ const API_BASE = "http://localhost:3002/api";
 
 let currentUser = null;
 const primaryStartFishingBtn = document.getElementById("primary-start-fishing-btn");
+const onboardingOverlayEl = document.getElementById("onboarding-overlay");
+const onboardingOutputEl = document.getElementById("onboarding-output");
+const onboardingSkipBtn = document.getElementById("onboarding-skip-btn");
+const onboardingNextBtn = document.getElementById("onboarding-next-btn");
 const smartInsightOutputEl = document.getElementById("smart-insight-output");
 const homeTripOutputEl = document.getElementById("home-trip-output");
 const continueToSpeciesBtn = document.getElementById("continue-to-species-btn");
@@ -141,6 +145,7 @@ let currentSessionHistoryDetail = null;
 let currentSessionStartSuggestion = null;
 let lastSuggestedSessionName = "";
 let lastSuggestedSpeciesFocus = "";
+let currentOnboardingStep = 0;
 let lastCatchDraft = {
   species: "",
   bait: "",
@@ -150,6 +155,21 @@ let lastCatchDraft = {
 };
 
 const PUBLIC_SHARE_BASE = API_BASE.replace(/\/api$/, "");
+const ONBOARDING_STORAGE_KEY = "fishdex-onboarding-dismissed";
+const onboardingSlides = [
+  {
+    title: "FishDex helps you decide what to do before you cast.",
+    body: "Start Fishing to get a real-time plan based on your conditions.",
+  },
+  {
+    title: "We analyze conditions, species, and patterns.",
+    body: "FishDex turns the strongest signals into a simple next move.",
+  },
+  {
+    title: "Then we guide your rig and approach.",
+    body: "Follow the flow from conditions to rig to review without guesswork.",
+  },
+];
 
 function clearListWithMessage(listEl, message) {
   if (!listEl) return;
@@ -157,6 +177,56 @@ function clearListWithMessage(listEl, message) {
   const li = document.createElement("li");
   li.textContent = message;
   listEl.appendChild(li);
+}
+
+function readLocalPreference(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalPreference(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    return;
+  }
+}
+
+function renderOnboardingStep() {
+  if (!onboardingOutputEl || !onboardingNextBtn) return;
+  const slide = onboardingSlides[currentOnboardingStep] || onboardingSlides[0];
+  const isLastStep = currentOnboardingStep === onboardingSlides.length - 1;
+
+  onboardingOutputEl.innerHTML = `
+    <p><strong>${escapeHtml(slide.title)}</strong></p>
+    <p>${escapeHtml(slide.body)}</p>
+  `;
+  onboardingNextBtn.textContent = isLastStep ? "Start Fishing" : "Next";
+}
+
+function dismissOnboarding(options = {}) {
+  if (!onboardingOverlayEl) return;
+  onboardingOverlayEl.hidden = true;
+  writeLocalPreference(ONBOARDING_STORAGE_KEY, "true");
+  if (options.scrollToStart) {
+    scrollToSection(conditionsAnchorEl || startAnchorEl || document.getElementById("home-top"));
+  }
+}
+
+function maybeShowOnboarding() {
+  if (!onboardingOverlayEl) return;
+  const dismissed = readLocalPreference(ONBOARDING_STORAGE_KEY) === "true";
+  if (dismissed) {
+    onboardingOverlayEl.hidden = true;
+    return;
+  }
+
+  currentOnboardingStep = 0;
+  renderOnboardingStep();
+  onboardingOverlayEl.hidden = false;
 }
 
 function getSpotPreferenceState() {
@@ -222,7 +292,7 @@ function renderSmartInsight() {
     return;
   }
 
-  smartInsightOutputEl.innerHTML = `<p class="muted">Enter your spot, then analyze conditions to get the clearest next move.</p>`;
+  smartInsightOutputEl.innerHTML = `<p class="muted">Start Fishing to get a real-time plan based on your conditions.</p>`;
 }
 
 function renderHomeTripSummary() {
@@ -244,7 +314,7 @@ function renderHomeTripSummary() {
       <p>${escapeHtml(`${lastTrip.catches ?? 0} catches • ${lastTrip.topRig || "No top rig"} • ${lastTrip.sessionDuration || "n/a"}`)}</p>
     `;
   } else {
-    homeTripOutputEl.innerHTML = `<p class="muted">No completed trip yet. Start fishing to see what FishDex would do before the first cast.</p>`;
+    homeTripOutputEl.innerHTML = `<p class="muted">Get a real-time plan based on your conditions, then start your first trip.</p>`;
   }
 
   if (primaryStartFishingBtn) primaryStartFishingBtn.textContent = "Start Fishing";
@@ -1283,13 +1353,13 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!isLoggedIn) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "Log in to start a trip.";
+    sessionModeNoteEl.textContent = "Start Fishing to build your first plan, then log in when you're ready to track trips.";
     sessionStartForm.hidden = true;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
     if (catchAuthNote) {
       catchAuthNote.hidden = false;
-      catchAuthNote.textContent = "Log in to start a trip and log catches.";
+      catchAuthNote.textContent = "Log in when you want FishDex to save trips and catches.";
     }
     currentFishingSession = null;
     renderSmartInsight();
@@ -1299,13 +1369,13 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!summary) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "No active trip. Start one when you're ready to log catches.";
+    sessionModeNoteEl.textContent = "Start a trip to begin tracking what works.";
     sessionStartForm.hidden = false;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
     if (catchAuthNote) {
       catchAuthNote.hidden = false;
-      catchAuthNote.textContent = "Start a trip before logging catches.";
+      catchAuthNote.textContent = "Start a trip to begin tracking what works.";
     }
     currentFishingSession = null;
     syncSessionStartDefaults();
@@ -1510,7 +1580,7 @@ function renderSessionHistory(sessions, isLoggedIn) {
   sessionHistoryNoteEl.hidden = false;
 
   if (!currentSessionHistory.length) {
-    sessionHistoryNoteEl.textContent = "No completed trips yet. End a session to add it to history.";
+    sessionHistoryNoteEl.textContent = "No completed trips yet. Finish your first trip to unlock review and comparison.";
     sessionHistoryListEl.hidden = true;
     clearSessionHistoryDetail();
     renderHomeTripSummary();
@@ -2295,7 +2365,7 @@ function renderCatches(items) {
   catchList.innerHTML = "";
 
   if (!items.length) {
-    catchList.innerHTML = "<li>No catches logged yet.</li>";
+    catchList.innerHTML = "<li>No catches yet — log your first trip to start learning patterns.</li>";
     return;
   }
 
@@ -2321,7 +2391,7 @@ function renderAnalytics(summary, isLoggedIn) {
   analyticsInsightsEl.innerHTML = "";
 
   if (!isLoggedIn) {
-    analyticsNoteEl.textContent = "Login to view your catch analytics.";
+    analyticsNoteEl.textContent = "Your insights will appear after your first few catches.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = true;
@@ -2329,7 +2399,7 @@ function renderAnalytics(summary, isLoggedIn) {
   }
 
   if (!summary) {
-    analyticsNoteEl.textContent = "Stats are unavailable right now.";
+    analyticsNoteEl.textContent = "Your insights will appear after your first few catches.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
@@ -2360,7 +2430,7 @@ function renderAnalytics(summary, isLoggedIn) {
   const insights = Array.isArray(summary.insights) ? summary.insights : [];
   if (!insights.length) {
     const li = document.createElement("li");
-    li.textContent = "No clear pattern yet.";
+    li.textContent = "Your insights will appear after your first few catches.";
     analyticsInsightsEl.appendChild(li);
     return;
   }
@@ -2376,7 +2446,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   if (!profileNoteEl || !profileWrapEl || !profileOutputEl) return;
 
   if (!isLoggedIn) {
-    profileNoteEl.textContent = "Login to view your fishing profile.";
+    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = true;
@@ -2384,7 +2454,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   }
 
   if (!profilePayload) {
-    profileNoteEl.textContent = "Fishing profile is unavailable right now.";
+    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = false;
@@ -3012,6 +3082,24 @@ if (profileRefreshBtn) {
     }
   });
 }
+
+if (onboardingSkipBtn) {
+  onboardingSkipBtn.addEventListener("click", () => {
+    dismissOnboarding();
+  });
+}
+
+if (onboardingNextBtn) {
+  onboardingNextBtn.addEventListener("click", () => {
+    if (currentOnboardingStep >= onboardingSlides.length - 1) {
+      dismissOnboarding({ scrollToStart: true });
+      return;
+    }
+
+    currentOnboardingStep += 1;
+    renderOnboardingStep();
+  });
+}
   if (savedSpotsSelectEl) {
   savedSpotsSelectEl.addEventListener("change", async () => {
     const selectedId = Number(savedSpotsSelectEl.value || "");
@@ -3040,6 +3128,9 @@ if (shareSessionBtn) {
 
 if (primaryStartFishingBtn) {
   primaryStartFishingBtn.addEventListener("click", () => {
+    if (onboardingOverlayEl && !onboardingOverlayEl.hidden) {
+      dismissOnboarding();
+    }
     scrollToSection(currentFishingSession?.sessionId ? activeTripAnchorEl : conditionsAnchorEl);
   });
 }
@@ -3068,6 +3159,7 @@ if (continueToStartBtn) {
   });
 }
 
+maybeShowOnboarding();
 updateTideStationVisibility();
 updateLocationAssistForContext();
 populateSavedSpotFieldsFromContext();

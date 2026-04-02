@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 async function apiJson(page, url, options = {}) {
   return page.evaluate(async ({ url: targetUrl, options: requestOptions }) => {
     const response = await fetch(`http://localhost:3002/api${targetUrl}`, {
@@ -57,6 +64,7 @@ test('fishing profile renders a read-only user-level profile for authenticated u
   const password = 'TestPass123!';
 
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('#register-form input[name="email"]').fill(email);
   await page.locator('#register-form input[name="password"]').fill(password);
@@ -101,6 +109,7 @@ test('fishing profile renders a read-only user-level profile for authenticated u
   });
 
   await page.reload();
+  await dismissOnboardingIfVisible(page);
   await expect(page.locator('#session-user')).toContainText(email);
   await expect(page.locator('#profile-wrap')).toBeVisible();
   await expect(page.locator('#profile-output')).toContainText('Style:');

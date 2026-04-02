@@ -87,6 +87,12 @@ Caption: Adjust in real time while fishing
 7. Review
 Caption: Learn what worked and improve
 
+Screenshot readiness note:
+
+- onboarding can be skipped for capture
+- first-run empty states should read as guided, not blank
+- avoid captures that show raw placeholder-style pending copy
+
 ## Premium Positioning
 Use outcome-focused language only.
 

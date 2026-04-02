@@ -1,10 +1,18 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 test('session flow keeps outing context coherent through start, catch, refresh, and end', async ({ page }) => {
   const email = `pw-${Date.now()}@fishdex.local`;
   const password = 'TestPass123!';
 
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('#register-form input[name="email"]').fill(email);
   await page.locator('#register-form input[name="password"]').fill(password);
@@ -50,11 +58,12 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await expect(page.locator('#active-session-summary')).toContainText('Current Activity');
 
   await page.locator('#end-session-btn').click();
-  await expect(page.locator('#session-mode-note')).toContainText('No active trip.');
+  await expect(page.locator('#session-mode-note')).toContainText('Start a trip to begin tracking what works.');
 });
 
 test('blank coordinates stay invalid instead of degrading into 0,0 requests', async ({ page }) => {
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('input[name="spot"]').fill('Needs Coordinates');
   await page.locator('select[name="liveMode"]').selectOption('off');
@@ -76,6 +85,7 @@ test('blank coordinates stay invalid instead of degrading into 0,0 requests', as
 
 test('out-of-range coordinates are rejected before provider calls', async ({ page }) => {
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('input[name="spot"]').fill('Out Of Range');
   await page.locator('select[name="liveMode"]').selectOption('off');

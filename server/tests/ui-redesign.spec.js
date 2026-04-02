@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 test('home flow emphasizes one primary path and rig guidance includes why-not reasoning', async ({ page }) => {
   const email = `pw-ui-${Date.now()}@fishdex.local`;
   const password = 'TestPass123!';
@@ -7,11 +14,16 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
+  await expect(page.locator('#onboarding-overlay')).toBeVisible();
+  await expect(page.locator('#onboarding-output')).toContainText('FishDex helps you decide what to do before you cast.');
+  await page.locator('#onboarding-skip-btn').click();
+  await expect(page.locator('#onboarding-overlay')).toBeHidden();
   await expect(page.locator('h1')).toContainText('FishDex');
   await expect(page).toHaveTitle('FishDex');
   await expect(page.locator('#primary-start-fishing-btn')).toBeVisible();
   await expect(page.locator('#primary-start-fishing-btn')).toHaveCSS('min-height', '52px');
   await expect(page.locator('.hero-copy')).toContainText('See the conditions, choose the species, fish the right rig');
+  await expect(page.locator('#smart-insight-output')).toContainText('Start Fishing to get a real-time plan based on your conditions.');
   await expect(page.locator('.bottom-nav')).toContainText('Logs');
   await expect(page.locator('.bottom-nav')).toContainText('Map');
   await expect(page.locator('.bottom-nav')).toContainText('Stats');
@@ -20,6 +32,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.locator('#register-form input[name="email"]').fill(email);
   await page.locator('#register-form input[name="password"]').fill(password);
   await page.locator('#register-form button[type="submit"]').click();
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('input[name="spot"]').fill('Redesign Bank');
   await page.locator('select[name="waterType"]').selectOption('freshwater');

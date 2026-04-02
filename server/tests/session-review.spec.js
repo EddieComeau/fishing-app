@@ -1,11 +1,19 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 test('completed session detail shows a read-only session review and restricts review access to the owner', async ({ page }) => {
   const emailOne = `pw-review-a-${Date.now()}@fishdex.local`;
   const emailTwo = `pw-review-b-${Date.now()}@fishdex.local`;
   const password = 'TestPass123!';
 
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('#register-form input[name="email"]').fill(emailOne);
   await page.locator('#register-form input[name="password"]').fill(password);

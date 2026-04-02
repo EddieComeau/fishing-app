@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 async function createEndedSession(page, { name, speciesFocus, species, bait, rigName }) {
   return page.evaluate(async (payload) => {
     async function apiJson(url, options = {}) {
@@ -56,6 +63,7 @@ test('completed session detail shows a read-only session comparison and restrict
   const password = 'TestPass123!';
 
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('#register-form input[name="email"]').fill(emailOne);
   await page.locator('#register-form input[name="password"]').fill(password);
@@ -97,6 +105,7 @@ test('completed session detail shows a read-only session comparison and restrict
   });
 
   await page.reload();
+  await dismissOnboardingIfVisible(page);
   await expect(page.locator('#session-user')).toContainText(emailOne);
   await expect(page.locator('#session-history-list')).toContainText('Comparison Trip Three');
   await page.locator('#session-history-list button').first().click();
