@@ -14,6 +14,17 @@ const onboardingOverlayEl = document.getElementById("onboarding-overlay");
 const onboardingOutputEl = document.getElementById("onboarding-output");
 const onboardingSkipBtn = document.getElementById("onboarding-skip-btn");
 const onboardingNextBtn = document.getElementById("onboarding-next-btn");
+const setupGuideOverlayEl = document.getElementById("setup-guide-overlay");
+const setupGuideCloseBtn = document.getElementById("setup-guide-close-btn");
+const setupGuideTitleEl = document.getElementById("setup-guide-title");
+const setupGuideSubtitleEl = document.getElementById("setup-guide-subtitle");
+const setupGuideProgressBarEl = document.getElementById("setup-guide-progress-bar");
+const setupGuideStageEl = document.getElementById("setup-guide-stage");
+const setupGuideStepLabelEl = document.getElementById("setup-guide-step-label");
+const setupGuideStepTitleEl = document.getElementById("setup-guide-step-title");
+const setupGuideIllustrationEl = document.getElementById("setup-guide-illustration");
+const setupGuideInstructionEl = document.getElementById("setup-guide-instruction");
+const setupGuideNextBtn = document.getElementById("setup-guide-next-btn");
 const smartInsightOutputEl = document.getElementById("smart-insight-output");
 const homeTripOutputEl = document.getElementById("home-trip-output");
 const continueToSpeciesBtn = document.getElementById("continue-to-species-btn");
@@ -78,6 +89,9 @@ const sessionStartIntelligenceEl = document.getElementById("session-start-intell
 const applySessionStartSuggestionsBtn = document.getElementById("apply-session-start-suggestions-btn");
 const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
+const setupGuideEntryWrapEl = document.getElementById("setup-guide-entry-wrap");
+const setupGuideEntryOutputEl = document.getElementById("setup-guide-entry-output");
+const setupGuideEntryActionsEl = document.getElementById("setup-guide-entry-actions");
 const rigCheckWrapEl = document.getElementById("rig-check-wrap");
 const rigCheckForm = document.getElementById("rig-check-form");
 const rigCheckRigEl = document.getElementById("rig-check-rig");
@@ -142,9 +156,13 @@ const profileRefreshBtn = document.getElementById("profile-refresh-btn");
 
 let speciesSearchTimer = null;
 const speciesSearchCache = new Map();
+const setupGuideCache = new Map();
 let currentRigRecommendation = null;
 let currentFishingSession = null;
 let currentIntelligenceSnapshot = null;
+let availableSetupGuides = [];
+let currentSetupGuide = null;
+let currentSetupGuideStep = 0;
 let currentSavedSpots = [];
 let currentLoadedSavedSpotId = null;
 let currentSessionHistory = [];
@@ -457,6 +475,216 @@ function renderRigCheckResult(result = null) {
     <p><strong>Fix:</strong> ${escapeHtml(fixes.join(" | ") || "No changes needed.")}</p>
     ${mismatches.length ? `<p><strong>Why:</strong> ${escapeHtml(mismatches.join(" | "))}</p>` : ""}
   `;
+}
+
+function renderSetupGuideEntry() {
+  if (!setupGuideEntryOutputEl || !setupGuideEntryActionsEl) return;
+
+  if (!availableSetupGuides.length) {
+    setupGuideEntryOutputEl.innerHTML = `<p class="muted">Setup guides will appear here when they are ready.</p>`;
+    setupGuideEntryActionsEl.innerHTML = "";
+    return;
+  }
+
+  const recommendedRig = String(currentRigRecommendation?.rigName || "").trim().toLowerCase();
+  const primaryGuide = availableSetupGuides.find((guide) => (
+    guide.appliesToRig && String(guide.appliesToRig).trim().toLowerCase() === recommendedRig
+  )) || null;
+
+  if (primaryGuide) {
+    setupGuideEntryOutputEl.innerHTML = `
+      <p><strong>${escapeHtml(primaryGuide.title)}</strong></p>
+      <p>${escapeHtml(`Follow the exact ${primaryGuide.appliesToRig} build before you fish the recommended setup.`)}</p>
+    `;
+  } else {
+    setupGuideEntryOutputEl.innerHTML = `
+      <p><strong>Build it the right way.</strong></p>
+      <p>${escapeHtml("Texas Rig Setup and Palomar Knot guides are ready in the gear section right now.")}</p>
+    `;
+  }
+
+  const guideButtons = availableSetupGuides.map((guide) => {
+    const isPrimary = primaryGuide?.id === guide.id;
+    return `
+      <button
+        class="${isPrimary ? "primary-cta" : "ghost"} setup-guide-guide-btn"
+        type="button"
+        data-setup-guide-open="${escapeHtml(guide.id)}"
+      >${escapeHtml(isPrimary ? "How to set this up" : guide.title)}</button>
+    `;
+  }).join("");
+
+  setupGuideEntryActionsEl.innerHTML = `<div class="setup-guide-guide-list">${guideButtons}</div>`;
+}
+
+function animateSetupGuideStage() {
+  if (!setupGuideStageEl) return;
+  setupGuideStageEl.classList.remove("setup-guide-stage-enter");
+  void setupGuideStageEl.offsetWidth;
+  setupGuideStageEl.classList.add("setup-guide-stage-enter");
+}
+
+function buildTexasRigIllustration(imageKey) {
+  const wormMarkup = `
+    <g transform="translate(20 92) rotate(-10 120 46)">
+      <rect x="0" y="10" width="202" height="72" rx="36" fill="url(#wormBody)" />
+      ${Array.from({ length: 13 }, (_, index) => {
+        const x = 12 + index * 14;
+        return `<ellipse cx="${x}" cy="46" rx="4.5" ry="31" fill="rgba(47, 72, 35, 0.28)" />`;
+      }).join("")}
+      <ellipse cx="184" cy="42" rx="20" ry="32" fill="rgba(24, 44, 22, 0.18)" />
+      <ellipse cx="30" cy="42" rx="18" ry="28" fill="rgba(255, 255, 255, 0.15)" />
+    </g>
+  `;
+
+  const hookBase = `
+    <g transform="translate(208 82)">
+      <path d="M56 8 C46 28, 30 58, 32 94 C34 118, 52 131, 72 123 C88 116, 96 102, 96 88" fill="none" stroke="#343434" stroke-width="6" stroke-linecap="round"/>
+      <path d="M94 88 L108 76" fill="none" stroke="#343434" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="48" cy="10" r="7" fill="#d7d7d7" stroke="#4a4a4a" stroke-width="3"/>
+    </g>
+  `;
+
+  const lineMarkup = imageKey === "texas_step_4"
+    ? `<path d="M318 126 C348 98, 372 92, 398 92" fill="none" stroke="#c8ced1" stroke-width="3" stroke-linecap="round"/>`
+    : "";
+
+  const arrowMap = {
+    texas_step_1: `<path d="M116 138 L196 138" fill="none" stroke="#2f6f50" stroke-width="7" stroke-linecap="round"/><path d="M182 124 L206 138 L182 152" fill="none" stroke="#2f6f50" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
+    texas_step_2: `<path d="M170 108 C220 80, 252 90, 274 112" fill="none" stroke="#2f6f50" stroke-width="7" stroke-linecap="round"/><path d="M252 104 L278 116 L256 132" fill="none" stroke="#2f6f50" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`,
+    texas_step_3: "",
+    texas_step_4: "",
+  };
+
+  const weightMarkup = imageKey === "texas_step_4"
+    ? `
+      <g transform="translate(224 98)">
+        <path d="M0 24 C0 10, 18 0, 42 0 C66 0, 84 10, 84 24 C84 34, 76 44, 66 56 L18 56 C8 44, 0 34, 0 24 Z" fill="#5a5a5a"/>
+        <rect x="39" y="-8" width="6" height="18" rx="3" fill="#d7d7d7"/>
+      </g>
+    `
+    : "";
+
+  return `
+    <svg viewBox="0 0 420 280" role="img" aria-label="Texas rig setup illustration">
+      <defs>
+        <linearGradient id="wormBody" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stop-color="#7c7440" />
+          <stop offset="55%" stop-color="#716a32" />
+          <stop offset="100%" stop-color="#4f4a1f" />
+        </linearGradient>
+      </defs>
+      ${wormMarkup}
+      ${hookBase}
+      ${lineMarkup}
+      ${weightMarkup}
+      ${arrowMap[imageKey] || ""}
+    </svg>
+  `;
+}
+
+function buildPalomarIllustration(imageKey) {
+  const loopMap = {
+    palomar_step_1: "M60 144 C118 112, 208 108, 324 144 C278 176, 160 182, 60 144 Z",
+    palomar_step_2: "M72 142 C134 102, 236 112, 320 152 C246 184, 130 186, 72 142 Z",
+    palomar_step_3: "M56 150 C126 106, 248 112, 334 148 C276 194, 138 192, 56 150 Z",
+    palomar_step_4: "M74 146 C140 114, 228 118, 306 146 C252 178, 152 180, 74 146 Z",
+  };
+
+  const knotMap = {
+    palomar_step_1: "",
+    palomar_step_2: `<circle cx="118" cy="144" r="18" fill="none" stroke="#8f9599" stroke-width="5"/>`,
+    palomar_step_3: `<circle cx="148" cy="152" r="16" fill="none" stroke="#8f9599" stroke-width="5"/>`,
+    palomar_step_4: `<circle cx="160" cy="158" r="10" fill="none" stroke="#8f9599" stroke-width="5"/>`,
+  };
+
+  return `
+    <svg viewBox="0 0 420 280" role="img" aria-label="Palomar knot illustration">
+      <path d="${loopMap[imageKey] || loopMap.palomar_step_1}" fill="none" stroke="#d4d7d9" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M24 120 C110 110, 226 108, 392 122" fill="none" stroke="#d4d7d9" stroke-width="6" stroke-linecap="round"/>
+      <path d="M24 138 C98 126, 220 124, 396 140" fill="none" stroke="#d4d7d9" stroke-width="4" stroke-linecap="round"/>
+      <path d="M116 100 C92 130, 82 170, 100 198 C118 224, 166 232, 204 214 C232 202, 256 178, 276 144" fill="none" stroke="#343434" stroke-width="6" stroke-linecap="round"/>
+      <path d="M274 144 L296 132" fill="none" stroke="#343434" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="290" cy="134" r="6" fill="#dbdbdb" stroke="#4d4d4d" stroke-width="3"/>
+      ${knotMap[imageKey] || ""}
+    </svg>
+  `;
+}
+
+function getSetupGuideIllustration(guideId, imageKey) {
+  if (guideId === "texas_rig") return buildTexasRigIllustration(imageKey);
+  if (guideId === "palomar_knot") return buildPalomarIllustration(imageKey);
+  return "";
+}
+
+function renderSetupGuideOverlay() {
+  if (!currentSetupGuide || !setupGuideTitleEl || !setupGuideStepTitleEl) return;
+
+  const steps = Array.isArray(currentSetupGuide.steps) ? currentSetupGuide.steps : [];
+  const step = steps[currentSetupGuideStep] || steps[0];
+  if (!step) return;
+
+  setupGuideTitleEl.textContent = currentSetupGuide.title || "Setup Guide";
+  setupGuideSubtitleEl.textContent = currentSetupGuide.subtitle || "";
+  setupGuideStepLabelEl.textContent = `Step ${currentSetupGuideStep + 1} of ${steps.length}`;
+  setupGuideStepTitleEl.textContent = step.title || "";
+  setupGuideInstructionEl.textContent = step.instruction || "";
+  setupGuideIllustrationEl.innerHTML = getSetupGuideIllustration(currentSetupGuide.id, step.imageKey);
+  setupGuideProgressBarEl.style.width = `${((currentSetupGuideStep + 1) / steps.length) * 100}%`;
+  setupGuideNextBtn.textContent = currentSetupGuideStep === steps.length - 1 ? "Done" : "Next Step";
+  animateSetupGuideStage();
+}
+
+function closeSetupGuide() {
+  currentSetupGuide = null;
+  currentSetupGuideStep = 0;
+  if (setupGuideOverlayEl) setupGuideOverlayEl.hidden = true;
+  document.body.classList.remove("setup-guide-open");
+}
+
+async function getSetupGuideDefinition(guideId) {
+  if (setupGuideCache.has(guideId)) {
+    return setupGuideCache.get(guideId);
+  }
+
+  const guide = await api(`/setup-guides/${guideId}`);
+  setupGuideCache.set(guideId, guide);
+  return guide;
+}
+
+async function openSetupGuide(guideId) {
+  const guide = await getSetupGuideDefinition(guideId);
+  currentSetupGuide = guide;
+  currentSetupGuideStep = 0;
+  renderSetupGuideOverlay();
+  if (setupGuideOverlayEl) setupGuideOverlayEl.hidden = false;
+  document.body.classList.add("setup-guide-open");
+}
+
+function advanceSetupGuide() {
+  if (!currentSetupGuide) return;
+  const steps = Array.isArray(currentSetupGuide.steps) ? currentSetupGuide.steps : [];
+  if (currentSetupGuideStep >= steps.length - 1) {
+    closeSetupGuide();
+    return;
+  }
+
+  currentSetupGuideStep += 1;
+  renderSetupGuideOverlay();
+}
+
+async function loadSetupGuideDirectory() {
+  if (!setupGuideEntryOutputEl) return;
+
+  try {
+    const response = await api("/setup-guides");
+    availableSetupGuides = Array.isArray(response.guides) ? response.guides : [];
+    renderSetupGuideEntry();
+  } catch (error) {
+    availableSetupGuides = [];
+    setupGuideEntryOutputEl.innerHTML = `<p class="muted">${escapeHtml(friendlyErrorMessage(error, "Setup guides are unavailable right now."))}</p>`;
+    setupGuideEntryActionsEl.innerHTML = "";
+  }
 }
 
 async function api(path, options = {}) {
@@ -1192,6 +1420,7 @@ function renderSetup(top) {
     currentRigRecommendation = null;
     if (rigCheckRigEl) rigCheckRigEl.value = "";
     renderRigCheckResult(null);
+    renderSetupGuideEntry();
     return;
   }
 
@@ -1238,6 +1467,7 @@ function renderSetup(top) {
       <p><strong>Snag risk:</strong> ${top.snagRisk}</p>
       ${personalizationText}
     `;
+    renderSetupGuideEntry();
     return;
   }
 
@@ -1250,6 +1480,7 @@ function renderSetup(top) {
     <p><strong>Snag risk:</strong> ${top.snagRisk}</p>
     <p><strong>Mitigation:</strong> Use weedless options around timber/grass and avoid long bottom drags in unknown structure.</p>
   `;
+  renderSetupGuideEntry();
 }
 
 function renderFight(top, accessMode) {
@@ -2801,6 +3032,51 @@ if (rigCheckForm) {
   });
 }
 
+if (setupGuideEntryActionsEl) {
+  setupGuideEntryActionsEl.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-setup-guide-open]");
+    if (!button) return;
+
+    const guideId = String(button.getAttribute("data-setup-guide-open") || "").trim();
+    if (!guideId) return;
+
+    const restoreButton = setButtonBusy(button, "Opening...");
+    try {
+      await openSetupGuide(guideId);
+    } catch (error) {
+      showAuthStatus(friendlyErrorMessage(error, "Unable to open that setup guide right now."), "warn");
+    } finally {
+      restoreButton();
+    }
+  });
+}
+
+if (setupGuideCloseBtn) {
+  setupGuideCloseBtn.addEventListener("click", () => {
+    closeSetupGuide();
+  });
+}
+
+if (setupGuideNextBtn) {
+  setupGuideNextBtn.addEventListener("click", () => {
+    advanceSetupGuide();
+  });
+}
+
+if (setupGuideOverlayEl) {
+  setupGuideOverlayEl.addEventListener("click", (event) => {
+    if (event.target === setupGuideOverlayEl) {
+      closeSetupGuide();
+    }
+  });
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && currentSetupGuide) {
+    closeSetupGuide();
+  }
+});
+
 catchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -3241,11 +3517,13 @@ if (continueToStartBtn) {
 maybeShowOnboarding();
 renderRigCheckResult(null);
 syncRigCheckDefaults();
+renderSetupGuideEntry();
 updateTideStationVisibility();
 updateLocationAssistForContext();
 populateSavedSpotFieldsFromContext();
 scoreBreakdownEl.hidden = true;
 if (snapshotEl) snapshotEl.hidden = true;
 if (scoreBreakdownToggleEl) scoreBreakdownToggleEl.textContent = "Expand for details";
+loadSetupGuideDirectory();
 refreshIntelligence();
 refreshSession();

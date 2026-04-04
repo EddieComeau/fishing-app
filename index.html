@@ -24,6 +24,29 @@
         </div>
       </div>
     </div>
+    <div id="setup-guide-overlay" class="setup-guide-overlay" hidden>
+      <div class="setup-guide-card">
+        <div class="setup-guide-header">
+          <button id="setup-guide-close-btn" class="setup-guide-back-btn" type="button" aria-label="Close setup guide">‹</button>
+          <div class="setup-guide-title-block">
+            <h2 id="setup-guide-title">Texas Rig Setup</h2>
+            <p id="setup-guide-subtitle">Step-by-step guide</p>
+          </div>
+        </div>
+        <div class="setup-guide-progress-rail" aria-hidden="true">
+          <div id="setup-guide-progress-bar" class="setup-guide-progress-bar"></div>
+        </div>
+        <div id="setup-guide-stage" class="setup-guide-stage">
+          <p id="setup-guide-step-label" class="setup-guide-step-label">Step 1 of 4</p>
+          <h3 id="setup-guide-step-title" class="setup-guide-step-title">Insert Hook</h3>
+          <div id="setup-guide-illustration" class="setup-guide-illustration"></div>
+          <p id="setup-guide-instruction" class="setup-guide-instruction">Push hook into the nose of the bait.</p>
+        </div>
+        <div class="setup-guide-footer">
+          <button id="setup-guide-next-btn" class="setup-guide-next-btn" type="button">Next Step</button>
+        </div>
+      </div>
+    </div>
     <header class="app-header">
       <div class="brand-lockup">
         <p class="eyebrow">Fishing Intelligence System</p>
@@ -305,6 +328,13 @@
               </div>
             </div>
             <div id="setup-output"></div>
+            <div id="setup-guide-entry-wrap" class="expand-block">
+              <p class="panel-label">Setup Guide</p>
+              <div id="setup-guide-entry-output" class="bite-window-panel">
+                <p class="muted">Open a step-by-step guide to build the rig cleanly before you fish it.</p>
+              </div>
+              <div id="setup-guide-entry-actions" class="setup-guide-entry-actions"></div>
+            </div>
             <div id="rig-check-wrap" class="expand-block">
               <p class="panel-label">Check Your Rig</p>
               <p class="muted">Compare what you tied against the recommended setup.</p>
