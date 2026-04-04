@@ -54,6 +54,13 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#targets')).toContainText('Why:');
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
   await expect(page.locator('#setup-output')).toContainText('Why Not:');
+  await expect(page.locator('#setup-guide-transition-note')).toContainText('Set it up, then check it');
+  await page.locator('[data-setup-guide-open="texas_rig"]').click();
+  await page.locator('#setup-guide-next-btn').click();
+  await page.locator('#setup-guide-next-btn').click();
+  await page.locator('#setup-guide-next-btn').click();
+  await page.locator('#setup-guide-next-btn').click();
+  await expect(page.locator('#setup-guide-transition-note')).toContainText('Ready to check your setup?');
   await page.locator('#rig-check-rig').selectOption('Texas rig');
   await page.locator('#rig-check-hook').selectOption('offset worm hook');
   await page.locator('#rig-check-weight').selectOption('bullet weight');
@@ -61,6 +68,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.locator('#rig-check-submit-btn').click();
   await expect(page.locator('#rig-check-output')).toContainText('VALID');
   await expect(page.locator('#rig-check-output')).toContainText('Hook matches');
+  await expect(page.locator('#rig-check-next-actions')).toContainText('Ready to start fishing?');
   await expect(page.locator('#strategy-anchor')).toContainText('Make the first move obvious');
   await expect(page.locator('#stats-anchor')).toContainText('Improve Your Catch Rate');
 
@@ -71,7 +79,10 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#active-trip-anchor')).toContainText('Trip live');
   await expect(page.locator('#active-session-card')).toBeVisible();
   await expect(page.locator('#catch-form')).toBeVisible();
-  await expect(page.locator('#catch-auth-note')).toContainText('Trip live.');
+  await expect(page.locator('#catch-auth-note')).toContainText('Trip live. Check it, then start fishing');
+  await expect(page.locator('#active-session-rig-tools')).toContainText('Keep The Rig Ready');
+  await page.locator('#active-trip-check-rig-btn').click();
+  await expect(page.locator('#rig-check-wrap')).toBeInViewport();
 
   await expect(page.locator('#catch-form button[type="submit"]')).toHaveCSS('min-height', '52px');
   await page.locator('#species-input').fill('Largemouth Bass');

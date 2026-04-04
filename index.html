@@ -333,6 +333,7 @@
               <div id="setup-guide-entry-output" class="bite-window-panel">
                 <p class="muted">Open a step-by-step guide to build the rig cleanly before you fish it.</p>
               </div>
+              <p id="setup-guide-transition-note" class="setup-guide-inline-note">Set it up, then check it before you start fishing.</p>
               <div id="setup-guide-entry-actions" class="setup-guide-entry-actions"></div>
             </div>
             <div id="rig-check-wrap" class="expand-block">
@@ -402,6 +403,7 @@
               <div id="rig-check-output" class="bite-window-panel">
                 <p class="muted">Select your rig details to confirm the setup.</p>
               </div>
+              <div id="rig-check-next-actions" class="setup-guide-entry-actions"></div>
             </div>
             <div class="journey-actions">
               <button id="continue-to-strategy-btn" class="ghost" type="button">Continue → Strategy</button>
@@ -493,6 +495,13 @@
                   <p id="active-session-name"></p>
                   <p id="active-session-meta" class="muted"></p>
                   <ul id="active-session-summary" class="kv"></ul>
+                  <div id="active-session-rig-tools" class="expand-block" hidden>
+                    <p class="panel-label">Keep The Rig Ready</p>
+                    <div id="active-session-rig-tools-output" class="bite-window-panel">
+                      <p class="muted">Your selected rig tools stay here while the trip is live.</p>
+                    </div>
+                    <div id="active-session-rig-tools-actions" class="setup-guide-entry-actions"></div>
+                  </div>
                   <div id="active-session-suggestions-wrap" hidden>
                     <p><strong>Suggested Adjustment</strong></p>
                     <ul id="active-session-suggestions" class="list"></ul>

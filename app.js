@@ -91,6 +91,7 @@ const targetsEl = document.getElementById("targets");
 const setupEl = document.getElementById("setup-output");
 const setupGuideEntryWrapEl = document.getElementById("setup-guide-entry-wrap");
 const setupGuideEntryOutputEl = document.getElementById("setup-guide-entry-output");
+const setupGuideTransitionNoteEl = document.getElementById("setup-guide-transition-note");
 const setupGuideEntryActionsEl = document.getElementById("setup-guide-entry-actions");
 const rigCheckWrapEl = document.getElementById("rig-check-wrap");
 const rigCheckForm = document.getElementById("rig-check-form");
@@ -99,6 +100,7 @@ const rigCheckHookEl = document.getElementById("rig-check-hook");
 const rigCheckWeightEl = document.getElementById("rig-check-weight");
 const rigCheckBaitEl = document.getElementById("rig-check-bait");
 const rigCheckOutputEl = document.getElementById("rig-check-output");
+const rigCheckNextActionsEl = document.getElementById("rig-check-next-actions");
 const fightEl = document.getElementById("fight-output");
 
 const authStatusEl = document.getElementById("auth-status");
@@ -123,6 +125,9 @@ const activeSessionCardEl = document.getElementById("active-session-card");
 const activeSessionNameEl = document.getElementById("active-session-name");
 const activeSessionMetaEl = document.getElementById("active-session-meta");
 const activeSessionSummaryEl = document.getElementById("active-session-summary");
+const activeSessionRigToolsEl = document.getElementById("active-session-rig-tools");
+const activeSessionRigToolsOutputEl = document.getElementById("active-session-rig-tools-output");
+const activeSessionRigToolsActionsEl = document.getElementById("active-session-rig-tools-actions");
 const activeSessionSuggestionsWrapEl = document.getElementById("active-session-suggestions-wrap");
 const activeSessionSuggestionsEl = document.getElementById("active-session-suggestions");
 const activeSessionInsightsEl = document.getElementById("active-session-insights");
@@ -163,6 +168,8 @@ let currentIntelligenceSnapshot = null;
 let availableSetupGuides = [];
 let currentSetupGuide = null;
 let currentSetupGuideStep = 0;
+let pendingRigCheckPrompt = false;
+let lastRigCheckResult = null;
 let currentSavedSpots = [];
 let currentLoadedSavedSpotId = null;
 let currentSessionHistory = [];
@@ -454,9 +461,13 @@ function syncRigCheckDefaults(topRigName = currentRigRecommendation?.rigName || 
 
 function renderRigCheckResult(result = null) {
   if (!rigCheckOutputEl) return;
+  lastRigCheckResult = result;
 
   if (!result) {
     rigCheckOutputEl.innerHTML = `<p class="muted">Select your rig details to confirm the setup.</p>`;
+    if (rigCheckNextActionsEl) {
+      rigCheckNextActionsEl.innerHTML = "";
+    }
     return;
   }
 
@@ -475,6 +486,18 @@ function renderRigCheckResult(result = null) {
     <p><strong>Fix:</strong> ${escapeHtml(fixes.join(" | ") || "No changes needed.")}</p>
     ${mismatches.length ? `<p><strong>Why:</strong> ${escapeHtml(mismatches.join(" | "))}</p>` : ""}
   `;
+
+  if (rigCheckNextActionsEl) {
+    rigCheckNextActionsEl.innerHTML = `
+      <div class="setup-guide-guide-list">
+        <div class="bite-window-panel">
+          <p><strong>Ready to start fishing?</strong></p>
+          <p>${escapeHtml(result.status === "valid" ? "Check it complete. Start fishing when you're ready." : "Adjust the setup, then start fishing once it feels right.")}</p>
+        </div>
+        <button id="rig-check-start-fishing-btn" class="primary-cta" type="button">Start Fishing</button>
+      </div>
+    `;
+  }
 }
 
 function renderSetupGuideEntry() {
@@ -482,6 +505,9 @@ function renderSetupGuideEntry() {
 
   if (!availableSetupGuides.length) {
     setupGuideEntryOutputEl.innerHTML = `<p class="muted">Setup guides will appear here when they are ready.</p>`;
+    if (setupGuideTransitionNoteEl) {
+      setupGuideTransitionNoteEl.textContent = "Set it up, then check it before you start fishing.";
+    }
     setupGuideEntryActionsEl.innerHTML = "";
     return;
   }
@@ -496,11 +522,19 @@ function renderSetupGuideEntry() {
       <p><strong>${escapeHtml(primaryGuide.title)}</strong></p>
       <p>${escapeHtml(`Follow the exact ${primaryGuide.appliesToRig} build before you fish the recommended setup.`)}</p>
     `;
+    if (setupGuideTransitionNoteEl) {
+      setupGuideTransitionNoteEl.textContent = pendingRigCheckPrompt
+        ? "Ready to check your setup?"
+        : "Set it up, then check it before you start fishing.";
+    }
   } else {
     setupGuideEntryOutputEl.innerHTML = `
       <p><strong>Build it the right way.</strong></p>
       <p>${escapeHtml("Texas Rig Setup and Palomar Knot guides are ready in the gear section right now.")}</p>
     `;
+    if (setupGuideTransitionNoteEl) {
+      setupGuideTransitionNoteEl.textContent = "Set it up, then check it before you start fishing.";
+    }
   }
 
   const guideButtons = availableSetupGuides.map((guide) => {
@@ -665,12 +699,45 @@ function advanceSetupGuide() {
   if (!currentSetupGuide) return;
   const steps = Array.isArray(currentSetupGuide.steps) ? currentSetupGuide.steps : [];
   if (currentSetupGuideStep >= steps.length - 1) {
+    pendingRigCheckPrompt = true;
     closeSetupGuide();
+    renderSetupGuideEntry();
+    if (rigCheckWrapEl) {
+      scrollToSection(rigCheckWrapEl);
+    }
     return;
   }
 
   currentSetupGuideStep += 1;
   renderSetupGuideOverlay();
+}
+
+function renderActiveSessionRigTools(sessionSummary) {
+  if (!activeSessionRigToolsEl || !activeSessionRigToolsOutputEl || !activeSessionRigToolsActionsEl) return;
+
+  const rigName = String(
+    sessionSummary?.topRig ||
+    currentRigRecommendation?.rigName ||
+    currentIntelligenceSnapshot?.recommendedRig ||
+    ""
+  ).trim();
+
+  const matchingGuide = availableSetupGuides.find((guide) => (
+    guide.appliesToRig && String(guide.appliesToRig).trim().toLowerCase() === rigName.toLowerCase()
+  )) || null;
+
+  activeSessionRigToolsEl.hidden = false;
+  activeSessionRigToolsOutputEl.innerHTML = `
+    <p><strong>${escapeHtml(rigName || "Current rig")}</strong></p>
+    <p>${escapeHtml(rigName ? "Set it up or check it again anytime while the trip is live." : "Set it up or check it again anytime while the trip is live.")}</p>
+  `;
+
+  activeSessionRigToolsActionsEl.innerHTML = `
+    <div class="setup-guide-guide-list">
+      ${matchingGuide ? `<button class="ghost setup-guide-guide-btn" type="button" data-setup-guide-open="${escapeHtml(matchingGuide.id)}">Set it up</button>` : ""}
+      <button id="active-trip-check-rig-btn" class="ghost setup-guide-guide-btn" type="button">Check it</button>
+    </div>
+  `;
 }
 
 async function loadSetupGuideDirectory() {
@@ -1418,6 +1485,7 @@ function renderSetup(top) {
   if (!top) {
     setupEl.textContent = "No setup recommendation available.";
     currentRigRecommendation = null;
+    pendingRigCheckPrompt = false;
     if (rigCheckRigEl) rigCheckRigEl.value = "";
     renderRigCheckResult(null);
     renderSetupGuideEntry();
@@ -1426,6 +1494,7 @@ function renderSetup(top) {
 
   if (top.rod && top.line && top.leader) {
     currentRigRecommendation = top;
+    pendingRigCheckPrompt = false;
     if (catchRigNameEl && !String(catchRigNameEl.value || "").trim()) {
       catchRigNameEl.value = top.rigName || "";
     }
@@ -1472,6 +1541,7 @@ function renderSetup(top) {
   }
 
   currentRigRecommendation = null;
+  pendingRigCheckPrompt = false;
   syncRigCheckDefaults(top.rigs);
   setupEl.innerHTML = `
     <p><strong>Primary:</strong> ${top.rigs}</p>
@@ -1621,6 +1691,9 @@ function renderFishingSession(summary, isLoggedIn) {
   activeSessionNameEl.textContent = "";
   activeSessionMetaEl.textContent = "";
   activeSessionSummaryEl.innerHTML = "";
+  if (activeSessionRigToolsEl) activeSessionRigToolsEl.hidden = true;
+  if (activeSessionRigToolsOutputEl) activeSessionRigToolsOutputEl.innerHTML = "";
+  if (activeSessionRigToolsActionsEl) activeSessionRigToolsActionsEl.innerHTML = "";
   if (activeSessionSuggestionsWrapEl) activeSessionSuggestionsWrapEl.hidden = true;
   if (activeSessionSuggestionsEl) activeSessionSuggestionsEl.innerHTML = "";
   activeSessionInsightsEl.innerHTML = "";
@@ -1665,7 +1738,7 @@ function renderFishingSession(summary, isLoggedIn) {
   if (catchForm) catchForm.hidden = false;
   if (catchAuthNote) {
     catchAuthNote.hidden = false;
-    catchAuthNote.textContent = "Trip live. Log each catch as it happens.";
+    catchAuthNote.textContent = "Trip live. Check it, then start fishing and log each catch as it happens.";
   }
   if (refreshSessionBtn) refreshSessionBtn.hidden = false;
   if (endSessionBtn) endSessionBtn.hidden = false;
@@ -1676,6 +1749,7 @@ function renderFishingSession(summary, isLoggedIn) {
     labelTopSuggestion: true,
   });
   renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
+  renderActiveSessionRigTools(summary);
   restoreCatchDraft();
   renderSmartInsight();
   renderHomeTripSummary();
@@ -3051,6 +3125,31 @@ if (setupGuideEntryActionsEl) {
   });
 }
 
+if (activeSessionRigToolsActionsEl) {
+  activeSessionRigToolsActionsEl.addEventListener("click", async (event) => {
+    const guideButton = event.target.closest("[data-setup-guide-open]");
+    if (guideButton) {
+      const guideId = String(guideButton.getAttribute("data-setup-guide-open") || "").trim();
+      if (!guideId) return;
+
+      const restoreButton = setButtonBusy(guideButton, "Opening...");
+      try {
+        await openSetupGuide(guideId);
+      } catch (error) {
+        showAuthStatus(friendlyErrorMessage(error, "Unable to open that setup guide right now."), "warn");
+      } finally {
+        restoreButton();
+      }
+      return;
+    }
+
+    const checkButton = event.target.closest("#active-trip-check-rig-btn");
+    if (checkButton) {
+      scrollToSection(rigCheckWrapEl || gearAnchorEl);
+    }
+  });
+}
+
 if (setupGuideCloseBtn) {
   setupGuideCloseBtn.addEventListener("click", () => {
     closeSetupGuide();
@@ -3070,6 +3169,13 @@ if (setupGuideOverlayEl) {
     }
   });
 }
+
+document.addEventListener("click", (event) => {
+  const startFishingButton = event.target.closest("#rig-check-start-fishing-btn");
+  if (startFishingButton) {
+    scrollToSection(currentFishingSession?.sessionId ? activeTripAnchorEl : startAnchorEl);
+  }
+});
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && currentSetupGuide) {

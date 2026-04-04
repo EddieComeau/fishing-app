@@ -26,6 +26,7 @@ test('setup guide walks one step at a time without changing rig recommendation o
 
   await expect(page.locator('#setup-output')).toContainText('Texas rig');
   await expect(page.locator('#setup-guide-entry-output')).toContainText('Texas Rig Setup');
+  await expect(page.locator('#setup-guide-transition-note')).toContainText('Set it up, then check it');
 
   await page.locator('[data-setup-guide-open="texas_rig"]').click();
   await expect(page.locator('#setup-guide-overlay')).toBeVisible();
@@ -50,6 +51,14 @@ test('setup guide walks one step at a time without changing rig recommendation o
   await page.locator('#setup-guide-next-btn').click();
   await expect(page.locator('#setup-guide-overlay')).toBeHidden();
   await expect(page.locator('#setup-output')).toContainText('Texas rig');
+  await expect(page.locator('#setup-guide-transition-note')).toContainText('Ready to check your setup?');
+
+  await page.locator('#rig-check-rig').selectOption('Texas rig');
+  await page.locator('#rig-check-hook').selectOption('offset worm hook');
+  await page.locator('#rig-check-weight').selectOption('bullet weight');
+  await page.locator('#rig-check-bait').selectOption('soft plastic worm');
+  await page.locator('#rig-check-submit-btn').click();
+  await expect(page.locator('#rig-check-next-actions')).toContainText('Ready to start fishing?');
 
   await page.locator('[data-setup-guide-open="palomar_knot"]').click();
   await expect(page.locator('#setup-guide-title')).toContainText('Palomar Knot');
