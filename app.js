@@ -481,6 +481,7 @@ function renderRigCheckResult(result = null) {
       <span class="confidence-badge ${confidenceClass(result.confidence)}">${escapeHtml(String(result.confidence || "low").toUpperCase())}</span>
       <strong>${escapeHtml(String(result.status || "needs_adjustment").replace(/_/g, " ").toUpperCase())}</strong>
     </div>
+    <p><strong>${escapeHtml(result.status === "valid" ? "Dialed in and ready." : "Close to the plan.")}</strong> ${escapeHtml(result.status === "valid" ? "Your setup matches the plan." : "Tighten the setup, then fish it with more confidence.")}</p>
     <p><strong>What matches:</strong> ${escapeHtml(matches.join(" | ") || "No confirmed match yet.")}</p>
     <p><strong>Issues:</strong> ${escapeHtml(issues.join(" | ") || "No setup issues were found.")}</p>
     <p><strong>Fix:</strong> ${escapeHtml(fixes.join(" | ") || "No changes needed.")}</p>
@@ -1522,6 +1523,7 @@ function renderSetup(top) {
         <span class="confidence-badge ${confidenceClass(top.personalizationPreview ? "high" : "moderate")}">${top.personalizationPreview ? "PERSONALIZED" : "BASE"}</span>
       </div>
       <p><strong>Confidence:</strong> ${escapeHtml(String(top.explanation?.modifiers?.[0]?.confidence || "moderate").toUpperCase())}</p>
+      <p class="muted">Explained, not guessed. Built from real fishing conditions.</p>
       <p><strong>Why:</strong></p>
       <ul class="list compact-list">
         ${whyBullets.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("") || "<li>No reasons returned.</li>"}
@@ -1845,6 +1847,8 @@ function renderSessionReview(review) {
     </ul>
     <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next adjustment was isolated.")}</p>
     ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    <p class="muted">Track what works over time. Build your fishing profile.</p>
+    <p class="muted"><strong>Advanced breakdown (Pro)</strong> coming soon.</p>
   `;
 }
 
@@ -2739,7 +2743,7 @@ function renderAnalytics(summary, isLoggedIn) {
   analyticsInsightsEl.innerHTML = "";
 
   if (!isLoggedIn) {
-    analyticsNoteEl.textContent = "Your insights will appear after your first few catches.";
+    analyticsNoteEl.textContent = "Your insights will appear after your first few catches. More patterns over time.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = true;
@@ -2747,14 +2751,14 @@ function renderAnalytics(summary, isLoggedIn) {
   }
 
   if (!summary) {
-    analyticsNoteEl.textContent = "Your insights will appear after your first few catches.";
+    analyticsNoteEl.textContent = "Your insights will appear after your first few catches. More patterns over time.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
     return;
   }
 
-  analyticsNoteEl.textContent = "A quick read on what is helping you catch more fish.";
+  analyticsNoteEl.textContent = "A quick read on what is helping you catch more fish. Advanced breakdown (Pro) coming soon.";
   analyticsKpisEl.hidden = false;
   analyticsInsightsEl.hidden = false;
   if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
@@ -2794,7 +2798,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   if (!profileNoteEl || !profileWrapEl || !profileOutputEl) return;
 
   if (!isLoggedIn) {
-    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat.";
+    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat. More patterns over time.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = true;
@@ -2802,7 +2806,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   }
 
   if (!profilePayload) {
-    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat.";
+    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat. More patterns over time.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = false;
@@ -2815,7 +2819,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   const patterns = Array.isArray(profilePayload.patterns) ? profilePayload.patterns : [];
   const warnings = Array.isArray(profilePayload.warnings) ? profilePayload.warnings : [];
 
-  profileNoteEl.textContent = "A read-only profile that shows what works, where you are consistent, and what to improve next.";
+  profileNoteEl.textContent = "A read-only profile that shows what works, where you are consistent, and what to improve next. Pro insight coming soon.";
   profileWrapEl.hidden = false;
   if (profileRefreshBtn) profileRefreshBtn.hidden = false;
   profileOutputEl.innerHTML = `

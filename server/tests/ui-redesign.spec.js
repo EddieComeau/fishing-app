@@ -54,6 +54,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#targets')).toContainText('Why:');
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
   await expect(page.locator('#setup-output')).toContainText('Why Not:');
+  await expect(page.locator('#setup-output')).toContainText('Explained, not guessed. Built from real fishing conditions.');
   await expect(page.locator('#setup-guide-transition-note')).toContainText('Set it up, then check it');
   await page.locator('[data-setup-guide-open="texas_rig"]').click();
   await page.locator('#setup-guide-next-btn').click();
@@ -67,10 +68,13 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.locator('#rig-check-bait').selectOption('soft plastic worm');
   await page.locator('#rig-check-submit-btn').click();
   await expect(page.locator('#rig-check-output')).toContainText('VALID');
+  await expect(page.locator('#rig-check-output')).toContainText('Dialed in and ready.');
+  await expect(page.locator('#rig-check-output')).toContainText('Your setup matches the plan.');
   await expect(page.locator('#rig-check-output')).toContainText('Hook matches');
   await expect(page.locator('#rig-check-next-actions')).toContainText('Ready to start fishing?');
   await expect(page.locator('#strategy-anchor')).toContainText('Make the first move obvious');
   await expect(page.locator('#stats-anchor')).toContainText('Improve Your Catch Rate');
+  await expect(page.locator('#stats-anchor')).toContainText('Pro insight coming soon.');
 
   await page.locator('#session-start-form input[name="name"]').fill('UI Flow Trip');
   await page.locator('#session-start-form input[name="speciesFocus"]').fill('Bass');
