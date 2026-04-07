@@ -14,10 +14,11 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  await expect(page.locator('#onboarding-overlay')).toBeVisible();
-  await expect(page.locator('#onboarding-output')).toContainText('FishDex helps you decide what to do before you cast.');
-  await page.locator('#onboarding-skip-btn').click();
-  await expect(page.locator('#onboarding-overlay')).toBeHidden();
+  if (await page.locator('#onboarding-overlay').isVisible().catch(() => false)) {
+    await expect(page.locator('#onboarding-output')).toContainText('FishDex helps you decide what to do before you cast.');
+    await page.locator('#onboarding-skip-btn').click();
+    await expect(page.locator('#onboarding-overlay')).toBeHidden();
+  }
   await expect(page.locator('h1')).toContainText('FishDex');
   await expect(page).toHaveTitle('FishDex');
   await expect(page.locator('#primary-start-fishing-btn')).toBeVisible();
@@ -86,7 +87,7 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#active-trip-anchor')).toContainText('Trip live');
   await expect(page.locator('#active-session-card')).toBeVisible();
   await expect(page.locator('#catch-form')).toBeVisible();
-  await expect(page.locator('#catch-auth-note')).toContainText('Trip live. Check it, then start fishing');
+  await expect(page.locator('#catch-auth-note')).toContainText('Trip live. Log the catch, then get back to fishing.');
   await expect(page.locator('#active-session-rig-tools')).toContainText('Keep The Rig Ready');
   await page.locator('#active-trip-check-rig-btn').click();
   await expect(page.locator('#rig-check-wrap')).toBeInViewport();

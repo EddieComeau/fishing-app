@@ -112,6 +112,7 @@ test('fishing profile renders a read-only user-level profile for authenticated u
   await dismissOnboardingIfVisible(page);
   await expect(page.locator('#session-user')).toContainText(email);
   await expect(page.locator('#profile-note')).toContainText('Pro insight coming soon.');
+  await expect(page.locator('#profile-note')).toContainText('what works');
   await expect(page.locator('#profile-wrap')).toBeVisible();
   await expect(page.locator('#profile-output')).toContainText('Style:');
   await expect(page.locator('#profile-output')).toContainText('Consistency:');

@@ -42,6 +42,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
 
   await expect(page.locator('#active-session-card')).toBeVisible();
   await expect(page.locator('#active-session-meta')).toContainText('active');
+  await expect(page.locator('#catch-auth-note')).toContainText('Trip live. Log the catch, then get back to fishing.');
 
   await page.locator('#species-input').fill('Largemouth Bass');
   await page.locator('input[name="bait"]').fill('Worm');
@@ -58,7 +59,7 @@ test('session flow keeps outing context coherent through start, catch, refresh, 
   await expect(page.locator('#active-session-summary')).toContainText('Current Activity');
 
   await page.locator('#end-session-btn').click();
-  await expect(page.locator('#session-mode-note')).toContainText('Start a trip to begin tracking what works.');
+  await expect(page.locator('#session-mode-note')).toContainText('Start the trip when the plan looks right.');
 });
 
 test('blank coordinates stay invalid instead of degrading into 0,0 requests', async ({ page }) => {

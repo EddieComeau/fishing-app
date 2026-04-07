@@ -1484,7 +1484,7 @@ function renderTargets(results, confidence, accessMode, alerts) {
 
 function renderSetup(top) {
   if (!top) {
-    setupEl.textContent = "No setup recommendation available.";
+    setupEl.textContent = "Set a spot to get your rig plan.";
     currentRigRecommendation = null;
     pendingRigCheckPrompt = false;
     if (rigCheckRigEl) rigCheckRigEl.value = "";
@@ -1561,7 +1561,7 @@ function renderSetup(top) {
 
 function renderFight(top, accessMode) {
   if (!top) {
-    fightEl.textContent = "No fight guidance available.";
+    fightEl.textContent = "Set the rig first to unlock the first move.";
     return;
   }
 
@@ -1647,7 +1647,7 @@ function renderSuggestionList(listEl, wrapEl, suggestions, options = {}) {
         <strong>${labelTopSuggestion && index === 0 ? `Top suggestion: ${suggestion.message || "Suggested adjustment"}` : suggestion.message || "Suggested adjustment"}</strong>
         <span class="badge">${String(suggestion.priority || "medium").toUpperCase()} PRIORITY</span>
       </div>
-      <div class="item-sub">Confidence ${String(suggestion.confidence || "medium").toUpperCase()}</div>
+      <div class="item-sub">Confidence: ${String(suggestion.confidence || "medium").toUpperCase()}</div>
       <div class="item-sub">${suggestion.reason || "No explanation returned."}</div>
       ${suggestionWarnings.length ? `<div class="item-sub">Watch: ${suggestionWarnings.join("; ")}</div>` : ""}
     `;
@@ -1706,13 +1706,13 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!isLoggedIn) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "Start Fishing to build your first plan, then log in when you're ready to track trips.";
+    sessionModeNoteEl.textContent = "Build the plan first, then log in when you're ready to save trips.";
     sessionStartForm.hidden = true;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
     if (catchAuthNote) {
       catchAuthNote.hidden = false;
-      catchAuthNote.textContent = "Log in when you want FishDex to save trips and catches.";
+      catchAuthNote.textContent = "Log in when you're ready to save trips and catches.";
     }
     currentFishingSession = null;
     renderSmartInsight();
@@ -1722,13 +1722,13 @@ function renderFishingSession(summary, isLoggedIn) {
 
   if (!summary) {
     sessionModeNoteEl.hidden = false;
-    sessionModeNoteEl.textContent = "Start a trip to begin tracking what works.";
+    sessionModeNoteEl.textContent = "Start the trip when the plan looks right.";
     sessionStartForm.hidden = false;
     activeSessionCardEl.hidden = true;
     if (catchForm) catchForm.hidden = true;
     if (catchAuthNote) {
       catchAuthNote.hidden = false;
-      catchAuthNote.textContent = "Start a trip to begin tracking what works.";
+      catchAuthNote.textContent = "Start the trip to begin logging catches.";
     }
     currentFishingSession = null;
     syncSessionStartDefaults();
@@ -1744,7 +1744,7 @@ function renderFishingSession(summary, isLoggedIn) {
   if (catchForm) catchForm.hidden = false;
   if (catchAuthNote) {
     catchAuthNote.hidden = false;
-    catchAuthNote.textContent = "Trip live. Check it, then start fishing and log each catch as it happens.";
+    catchAuthNote.textContent = "Trip live. Log the catch, then get back to fishing.";
   }
   if (refreshSessionBtn) refreshSessionBtn.hidden = false;
   if (endSessionBtn) endSessionBtn.hidden = false;
@@ -1754,7 +1754,7 @@ function renderFishingSession(summary, isLoggedIn) {
   renderSuggestionList(activeSessionSuggestionsEl, activeSessionSuggestionsWrapEl, summary.adaptiveSuggestions || [], {
     labelTopSuggestion: true,
   });
-  renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
+  renderInsightList(activeSessionInsightsEl, collectSessionInsightLines(summary), "Trip insights will show up as the session builds.");
   renderActiveSessionRigTools(summary);
   restoreCatchDraft();
   renderSmartInsight();
@@ -1850,8 +1850,8 @@ function renderSessionReview(review) {
     <ul class="list compact-list">
       ${(whatDidNotWork.length ? whatDidNotWork : ["No clear failure pattern was isolated."]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
     </ul>
-    <p><strong>Your pattern so far:</strong> ${escapeHtml(patterns.join(" | ") || "No repeatable session pattern is clear yet.")}</p>
-    <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next adjustment was isolated.")}</p>
+    <p><strong>Your pattern so far:</strong> ${escapeHtml(patterns.join(" | ") || "No repeatable session pattern yet.")}</p>
+    <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next move yet.")}</p>
     ${warnings.length ? `<p><strong>What to watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
     <p class="muted">Track what works over time. Build your fishing profile.</p>
     <p class="muted"><strong>Advanced breakdown (Pro)</strong> coming soon.</p>
@@ -1898,7 +1898,7 @@ function renderSessionHistoryDetail(summary, review = null, comparison = null) {
     buildSessionSummaryItems(summary, { includeCurrentContext: false })
   );
   renderSuggestionList(sessionHistoryDetailSuggestionsEl, sessionHistoryDetailSuggestionsWrapEl, summary.adaptiveSuggestions || []);
-  renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "No trip insight yet.");
+  renderInsightList(sessionHistoryDetailInsightsEl, collectSessionInsightLines(summary), "Trip insights show up here once FishDex has enough detail.");
   renderSessionReview(review);
   renderSessionComparison(comparison);
   setSessionShareNote("Create a read-only public link if you want to share this completed trip.");
@@ -1938,14 +1938,14 @@ function renderSessionHistory(sessions, isLoggedIn) {
   sessionHistoryNoteEl.hidden = false;
 
   if (!currentSessionHistory.length) {
-    sessionHistoryNoteEl.textContent = "No completed trips yet. Finish your first trip to unlock review and comparison.";
+    sessionHistoryNoteEl.textContent = "No completed trips yet. Finish one trip to unlock review and comparison.";
     sessionHistoryListEl.hidden = true;
     clearSessionHistoryDetail();
     renderHomeTripSummary();
     return;
   }
 
-  sessionHistoryNoteEl.textContent = "Ended trips appear here newest first. Open one to review what happened.";
+  sessionHistoryNoteEl.textContent = "Ended trips appear here newest first. Open one to review it fast.";
   sessionHistoryListEl.hidden = false;
 
   currentSessionHistory.forEach((session) => {
@@ -2575,7 +2575,7 @@ async function refreshIntelligence() {
   }
 
   setLoadingState(loadingTargets, true);
-  showStatus("Analyzing conditions...", "ok");
+  showStatus("Reading conditions...", "ok");
 
   let conditions;
   let modeLabel = "manual";
@@ -2637,7 +2637,7 @@ async function refreshIntelligence() {
   renderTripPrep(tripPrepPayload, modeLabel);
   renderSessionStartIntelligence(sessionStartPayload, modeLabel);
 
-  showStatus("Finding best species...", "ok");
+  showStatus("Finding likely species...", "ok");
   let speciesList = [];
   try {
     const query = speciesQueryForWaterType(input.waterType);
@@ -2666,14 +2666,14 @@ async function refreshIntelligence() {
   let rigPayload = null;
   let fightPayload = null;
 
-  showStatus("Evaluating rigs...", "ok");
+  showStatus("Choosing the best rig...", "ok");
   try {
     rigPayload = await getRigRecommendation(input, conditions, topTargetName);
   } catch {
     rigPayload = null;
   }
 
-  showStatus("Building your first move...", "ok");
+  showStatus("Building the first move...", "ok");
   try {
     fightPayload = await getFightStrategy(input, conditions, rigPayload, topTargetName);
   } catch {
@@ -2723,7 +2723,7 @@ function renderCatches(items) {
   catchList.innerHTML = "";
 
   if (!items.length) {
-    catchList.innerHTML = "<li>No catches yet — log your first trip to start learning patterns.</li>";
+    catchList.innerHTML = "<li>No catches yet. Log the first one and keep moving.</li>";
     return;
   }
 
@@ -2749,7 +2749,7 @@ function renderAnalytics(summary, isLoggedIn) {
   analyticsInsightsEl.innerHTML = "";
 
   if (!isLoggedIn) {
-    analyticsNoteEl.textContent = "Your insights will appear after your first few catches. More patterns over time.";
+    analyticsNoteEl.textContent = "Log a few catches to unlock stats. More patterns show up over time.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = true;
@@ -2757,14 +2757,14 @@ function renderAnalytics(summary, isLoggedIn) {
   }
 
   if (!summary) {
-    analyticsNoteEl.textContent = "Your insights will appear after your first few catches. More patterns over time.";
+    analyticsNoteEl.textContent = "Log a few catches to unlock stats. More patterns show up over time.";
     analyticsKpisEl.hidden = true;
     analyticsInsightsEl.hidden = true;
     if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
     return;
   }
 
-  analyticsNoteEl.textContent = "A quick read on what is helping you catch more fish. Advanced breakdown (Pro) coming soon.";
+  analyticsNoteEl.textContent = "A quick read on what is helping most right now. Advanced breakdown (Pro) coming soon.";
   analyticsKpisEl.hidden = false;
   analyticsInsightsEl.hidden = false;
   if (analyticsRefreshBtn) analyticsRefreshBtn.hidden = false;
@@ -2788,7 +2788,7 @@ function renderAnalytics(summary, isLoggedIn) {
   const insights = Array.isArray(summary.insights) ? summary.insights : [];
   if (!insights.length) {
     const li = document.createElement("li");
-    li.textContent = "Your insights will appear after your first few catches.";
+    li.textContent = "Stats will show up after a few catches.";
     analyticsInsightsEl.appendChild(li);
     return;
   }
@@ -2804,7 +2804,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   if (!profileNoteEl || !profileWrapEl || !profileOutputEl) return;
 
   if (!isLoggedIn) {
-    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat. More patterns over time.";
+    profileNoteEl.textContent = "Fish a few trips to unlock your profile. More patterns show up over time.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = true;
@@ -2812,7 +2812,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   }
 
   if (!profilePayload) {
-    profileNoteEl.textContent = "Fish a few trips and FishDex will show what patterns you can repeat. More patterns over time.";
+    profileNoteEl.textContent = "Fish a few trips to unlock your profile. More patterns show up over time.";
     profileWrapEl.hidden = true;
     profileOutputEl.innerHTML = "";
     if (profileRefreshBtn) profileRefreshBtn.hidden = false;
@@ -2825,7 +2825,7 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
   const patterns = Array.isArray(profilePayload.patterns) ? profilePayload.patterns : [];
   const warnings = Array.isArray(profilePayload.warnings) ? profilePayload.warnings : [];
 
-  profileNoteEl.textContent = "A read-only profile that shows what works, where you are consistent, and what to improve next. Pro insight coming soon.";
+  profileNoteEl.textContent = "A read-only profile showing what works, where you stay consistent, and what to tighten next. Pro insight coming soon.";
   profileWrapEl.hidden = false;
   if (profileRefreshBtn) profileRefreshBtn.hidden = false;
   profileOutputEl.innerHTML = `
@@ -2836,10 +2836,10 @@ function renderFishingProfile(profilePayload, isLoggedIn) {
     <p><strong>Style:</strong> ${escapeHtml(profilePayload.profile?.style || "No clear style yet.")}</p>
     <p><strong>Consistency:</strong> ${escapeHtml(String(profilePayload.profile?.consistency || "low").toUpperCase())}</p>
     <p><strong>Summary:</strong> ${escapeHtml(profilePayload.profile?.summary || "No profile summary returned.")}</p>
-    <p><strong>Strengths:</strong> ${escapeHtml(strengths.join(" | ") || "No repeatable strength is confirmed yet.")}</p>
-    <p><strong>Tendencies:</strong> ${escapeHtml(tendencies.join(" | ") || "No stable tendency is confirmed yet.")}</p>
-    <p><strong>Improve next:</strong> ${escapeHtml(improvementAreas.join(" | ") || "No repeatable improvement area is isolated yet.")}</p>
-    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No cross-session pattern is isolated yet.")}</p>
+    <p><strong>Strengths:</strong> ${escapeHtml(strengths.join(" | ") || "No repeatable strength yet.")}</p>
+    <p><strong>Tendencies:</strong> ${escapeHtml(tendencies.join(" | ") || "No stable tendency yet.")}</p>
+    <p><strong>Improve next:</strong> ${escapeHtml(improvementAreas.join(" | ") || "No repeatable improvement area yet.")}</p>
+    <p><strong>Patterns:</strong> ${escapeHtml(patterns.join(" | ") || "No cross-session pattern yet.")}</p>
     ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
   `;
 }

@@ -1,10 +1,18 @@
 const { test, expect } = require('@playwright/test');
 
+async function dismissOnboardingIfVisible(page) {
+  const skipButton = page.locator('#onboarding-skip-btn');
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click();
+  }
+}
+
 test('session history shows ended trips, preserves saved-spot linkage, and opens detailed summaries', async ({ page }) => {
   const email = `pw-history-${Date.now()}@fishdex.local`;
   const password = 'TestPass123!';
 
   await page.goto('/');
+  await dismissOnboardingIfVisible(page);
 
   await page.locator('#register-form input[name="email"]').fill(email);
   await page.locator('#register-form input[name="password"]').fill(password);
@@ -42,6 +50,8 @@ test('session history shows ended trips, preserves saved-spot linkage, and opens
   await page.locator('input[name="lat"]').fill('27.1234');
   await page.locator('input[name="lng"]').fill('-80.4567');
   await page.locator('input[name="tideStationId"]').fill('8722670');
+  await page.locator('summary').filter({ hasText: 'Saved locations' }).click();
+  await expect(page.locator('#saved-spot-name')).toBeVisible();
   await page.locator('#saved-spot-name').fill('Jetty Saved');
   await page.locator('#saved-spot-notes').fill('History-linked spot');
   await page.locator('#save-current-spot-btn').click();
