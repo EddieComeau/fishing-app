@@ -1516,6 +1516,9 @@ function renderSetup(top) {
       : "";
     const whyBullets = Array.isArray(top.reasons) ? top.reasons.slice(0, 3) : [];
     const whyNot = Array.isArray(top.explanation?.whyNot) ? top.explanation.whyNot.slice(0, 3) : [];
+    const watchLine = top.snagRisk
+      ? `Snag risk is ${top.snagRisk}. Stay deliberate around cover and keep the presentation clean.`
+      : "No extra watch item surfaced for this setup.";
     syncRigCheckDefaults(top.rigName);
     setupEl.innerHTML = `
       <div class="activity-strip">
@@ -1524,14 +1527,15 @@ function renderSetup(top) {
       </div>
       <p><strong>Confidence:</strong> ${escapeHtml(String(top.explanation?.modifiers?.[0]?.confidence || "moderate").toUpperCase())}</p>
       <p class="muted">Explained, not guessed. Built from real fishing conditions.</p>
-      <p><strong>Why:</strong></p>
+      <p><strong>Why this works right now:</strong></p>
       <ul class="list compact-list">
         ${whyBullets.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("") || "<li>No reasons returned.</li>"}
       </ul>
-      <p><strong>Why Not:</strong></p>
+      <p><strong>Why not these:</strong></p>
       <ul class="list compact-list">
         ${whyNot.map((item) => `<li><strong>${escapeHtml(item.option)}:</strong> ${escapeHtml(item.reason)}</li>`).join("") || "<li>No alternate valid options were surfaced.</li>"}
       </ul>
+      <p><strong>What to watch:</strong> ${escapeHtml(watchLine)}</p>
       <p><strong>Rod:</strong> ${top.rod.power}, ${top.rod.length}, ${top.rod.action}</p>
       <p><strong>Line:</strong> ${top.line.type} ${top.line.strengthLb} lb</p>
       <p><strong>Leader:</strong> ${top.leader.type} ${top.leader.strengthLb} lb, ${top.leader.lengthIn} in</p>
@@ -1835,6 +1839,7 @@ function renderSessionReview(review) {
       <strong>${escapeHtml(String(review.review?.overallOutcome || "mixed").toUpperCase())}</strong>
     </div>
     <p><strong>Expectation:</strong> ${escapeHtml(String(review.review?.expectationMatch || "matched").toUpperCase())}</p>
+    <p><strong>Confidence:</strong> ${escapeHtml(String(review.review?.confidence || "low").toUpperCase())}</p>
     <p><strong>Total catches:</strong> ${escapeHtml(String(review.review?.totalCatches ?? review.review?.landedCount ?? "n/a"))}</p>
     <p><strong>Summary:</strong> ${escapeHtml(review.review?.summary || "No session review summary returned.")}</p>
     <p><strong>What worked:</strong></p>
@@ -1845,8 +1850,9 @@ function renderSessionReview(review) {
     <ul class="list compact-list">
       ${(whatDidNotWork.length ? whatDidNotWork : ["No clear failure pattern was isolated."]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
     </ul>
+    <p><strong>Your pattern so far:</strong> ${escapeHtml(patterns.join(" | ") || "No repeatable session pattern is clear yet.")}</p>
     <p><strong>Next adjustment:</strong> ${escapeHtml(missedOpportunities[0] || patterns[0] || "No clear next adjustment was isolated.")}</p>
-    ${warnings.length ? `<p><strong>Watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${warnings.length ? `<p><strong>What to watch:</strong> ${escapeHtml(warnings.join(" "))}</p>` : ""}
     <p class="muted">Track what works over time. Build your fishing profile.</p>
     <p class="muted"><strong>Advanced breakdown (Pro)</strong> coming soon.</p>
   `;

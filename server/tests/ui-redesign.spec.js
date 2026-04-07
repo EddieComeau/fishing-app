@@ -53,7 +53,10 @@ test('home flow emphasizes one primary path and rig guidance includes why-not re
   await expect(page.locator('#targets')).toContainText('Primary:');
   await expect(page.locator('#targets')).toContainText('Why:');
   await expect(page.locator('#gear-anchor')).toContainText('Fish one clear setup');
-  await expect(page.locator('#setup-output')).toContainText('Why Not:');
+  await expect(page.locator('#setup-output')).toContainText('Why this works right now:');
+  await expect(page.locator('#setup-output')).toContainText('Why not these:');
+  await expect(page.locator('#setup-output')).toContainText('Confidence:');
+  await expect(page.locator('#setup-output')).toContainText('What to watch:');
   await expect(page.locator('#setup-output')).toContainText('Explained, not guessed. Built from real fishing conditions.');
   await expect(page.locator('#setup-guide-transition-note')).toContainText('Set it up, then check it');
   await page.locator('[data-setup-guide-open="texas_rig"]').click();
