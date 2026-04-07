@@ -758,6 +758,7 @@ async function loadSetupGuideDirectory() {
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
+    cache: "no-store",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
@@ -3330,6 +3331,8 @@ if (endSessionBtn) {
       await api(`/sessions/${currentFishingSession.sessionId}/end`, {
         method: "POST",
       });
+      currentFishingSession = null;
+      renderFishingSession(null, true);
       await refreshFishingSession();
       await refreshFishingProfile();
       await refreshSessionHistory();
